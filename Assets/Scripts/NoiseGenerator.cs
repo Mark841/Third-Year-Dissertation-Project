@@ -8,9 +8,11 @@ public static class NoiseGenerator
     {
         float[,] noiseMap = new float[mapWidth, mapHeight];
 
-        // Pseudo Random Number Generator
+        // Pseudo random number generator to get same thing for each seed
         System.Random prng = new System.Random(seed);
         Vector2[] octaveOffsets = new Vector2[octaves];
+
+        // Offset the noise for that seed
         for (int i = 0; i < octaves; i++)
         {
             float offsetX = prng.Next(-100000, 100000) + offset.x;
@@ -18,16 +20,9 @@ public static class NoiseGenerator
             octaveOffsets[i] = new Vector2(offsetX, offsetY);
         }
 
-        if (scale <= 0)
-        {
-            scale = 0.0001f;
-        }
-
+        // Variables to keep track of the maximum and minimum height of the mesh
         float maxNoiseHeight = float.MinValue;
         float minNoiseHeight = float.MaxValue;
-
-        float halfWidth = mapWidth / 2f;
-        float halfHeight = mapHeight / 2f;
 
         for (int y = 0; y < mapHeight; y++)
         {
@@ -40,8 +35,8 @@ public static class NoiseGenerator
 
                 for (int i = 0; i < octaves; i++)
                 {
-                    float xSample = (x - halfWidth) / scale * frequency + octaveOffsets[i].x;
-                    float ySample = (y - halfHeight) / scale * frequency + octaveOffsets[i].y;
+                    float xSample = (x - mapWidth) / scale * frequency + octaveOffsets[i].x;
+                    float ySample = (y - mapHeight) / scale * frequency + octaveOffsets[i].y;
 
                     float xWarping = DISTORT_STRENGTH * Mathf.PerlinNoise((xSample + xWarpOffset.x) * roughness, (ySample + xWarpOffset.y) * roughness);
                     float yWarping = DISTORT_STRENGTH * Mathf.PerlinNoise((xSample + yWarpOffset.x) * roughness, (ySample + yWarpOffset.y) * roughness);
@@ -68,6 +63,7 @@ public static class NoiseGenerator
             }
         }
 
+        // If the mesh has been set to normalise the noise
         if (normalise)
         {
             for (int y = 0; y < mapHeight; y++)

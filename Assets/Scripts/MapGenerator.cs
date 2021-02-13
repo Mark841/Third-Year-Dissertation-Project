@@ -4,6 +4,7 @@ using UnityEngine;
 
 public class MapGenerator : MonoBehaviour
 {
+    // These are the list of settings the user can change in the Unity inspector that will affect the terrain
     public enum DrawMode { NoiseMap, ColourMap, Mesh };
     public DrawMode drawMode;
 
@@ -30,10 +31,13 @@ public class MapGenerator : MonoBehaviour
     public int seed;
     public Vector2 offset;
 
+    // These affect the heights of the mesh and how smooth it appears
     public float meshHeightMultiplier;
     public AnimationCurve meshHeightCurve;
 
+    // Normalise affects whether the nosie will be normalised or not
     public bool normalise;
+    // This determines if the terrain will update when a value is changed or only when the update button is pressed
     public bool autoUpdate;
 
     public TerrainType[] regions;
