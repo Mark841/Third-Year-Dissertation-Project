@@ -9,7 +9,7 @@ public class MapGenerator : MonoBehaviour
     public DrawMode drawMode;
 
     // Must be 241 or below in size otherwise the LevelOfDetail functionality breaks as the list index goes out of bounds
-    const int chunkSize = 241;
+    public const int CHUNK_SIZE = 241;
     // The higher the level of detail goes the smaller the chunk size must be, 241 is largest it can be for LoD 6 if more LoD then chunk size must be decreased
     [Range(0, 6)]
     public int levelOfDetail;
@@ -44,20 +44,20 @@ public class MapGenerator : MonoBehaviour
 
     public void GenerateMap()
     {
-        float[,] noiseMap = NoiseGenerator.GenerateNoiseMap(chunkSize, chunkSize, seed, noiseScale, octaves, persistence, lacunarity, DISTORT_STRENGTH, roughness, offset, xWarpOffset, yWarpOffset, normalise);
+        float[,] noiseMap = NoiseGenerator.GenerateNoiseMap(CHUNK_SIZE, CHUNK_SIZE, seed, noiseScale, octaves, persistence, lacunarity, DISTORT_STRENGTH, roughness, offset, xWarpOffset, yWarpOffset, normalise);
 
-        Color[] colourMap = new Color[chunkSize * chunkSize];
+        Color[] colourMap = new Color[CHUNK_SIZE * CHUNK_SIZE];
 
-        for (int y = 0; y < chunkSize; y++)
+        for (int y = 0; y < CHUNK_SIZE; y++)
         {
-            for (int x = 0; x < chunkSize; x++)
+            for (int x = 0; x < CHUNK_SIZE; x++)
             {
                 float currentHeight = noiseMap[x, y];
                 for (int i=0; i < regions.Length; i++)
                 {
                     if (currentHeight <= regions[i].height)
                     {
-                        colourMap[y * chunkSize + x] = regions[i].colour;
+                        colourMap[y * CHUNK_SIZE + x] = regions[i].colour;
                         break;
                     }
                 }
@@ -72,11 +72,11 @@ public class MapGenerator : MonoBehaviour
         }
         else if (drawMode == DrawMode.ColourMap)
         {
-            display.drawTexture(TextureGenerator.TextureFromColourMap(colourMap, chunkSize, chunkSize));
+            display.drawTexture(TextureGenerator.TextureFromColourMap(colourMap, CHUNK_SIZE, CHUNK_SIZE));
         }
         else if (drawMode == DrawMode.Mesh)
         {
-            display.drawMesh(MeshGenerator.GenerateTerrainMesh(noiseMap, meshHeightMultiplier, meshHeightCurve, levelOfDetail), TextureGenerator.TextureFromColourMap(colourMap, chunkSize, chunkSize));
+            display.drawMesh(MeshGenerator.GenerateTerrainMesh(noiseMap, meshHeightMultiplier, meshHeightCurve, levelOfDetail), TextureGenerator.TextureFromColourMap(colourMap, CHUNK_SIZE, CHUNK_SIZE));
         }
     }
 
