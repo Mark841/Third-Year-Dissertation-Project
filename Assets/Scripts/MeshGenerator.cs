@@ -4,8 +4,10 @@ using UnityEngine;
 
 public static class MeshGenerator
 {
-    public static MeshData GenerateTerrainMesh(float[,] heightMap, float heightMultiplier, AnimationCurve heightCurve, int levelOfDetail)
+    public static MeshData GenerateTerrainMesh(float[,] heightMap, float heightMultiplier, AnimationCurve heightCurvature, int levelOfDetail)
     {
+        // Have to create a new height curve object as otherwise because of threading multiple chunks it doesnt like to evaluate teh same object mutliple times and heavily distorts the chunks
+        AnimationCurve heightCurve = new AnimationCurve(heightCurvature.keys);
         int width = heightMap.GetLength(0);
         int height = heightMap.GetLength(1);
         float topLeftX = (width - 1) / -2.0f;

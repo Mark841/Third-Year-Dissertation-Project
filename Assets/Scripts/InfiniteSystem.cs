@@ -6,8 +6,10 @@ public class InfiniteSystem : MonoBehaviour
 {
     public const float MAX_VIEW_DIST = 450.0f;
     public Transform viewer;
+    public Material mapMaterial;
 
     public static Vector2 viewerPos;
+    static MapGenerator mapGenerator;
     int chunkSize;
     int chunkVisibleInViewDist;
 
@@ -16,6 +18,7 @@ public class InfiniteSystem : MonoBehaviour
 
     private void Start()
     {
+        mapGenerator = FindObjectOfType<MapGenerator>();
         chunkSize = MapGenerator.CHUNK_SIZE - 1;
         chunkVisibleInViewDist = Mathf.RoundToInt(MAX_VIEW_DIST / chunkSize);
     }
@@ -57,7 +60,7 @@ public class InfiniteSystem : MonoBehaviour
                 }
                 else
                 { // If the chunk doesn't exist yet add it to the dictionary
-                    terrainChunkDict.Add(viewedChunkCoord, new TerrainChunk(viewedChunkCoord, chunkSize, transform));
+                    terrainChunkDict.Add(viewedChunkCoord, new TerrainChunk(viewedChunkCoord, chunkSize, transform, mapMaterial));
                 }
             }
         }
@@ -70,22 +73,41 @@ public class InfiniteSystem : MonoBehaviour
         Vector2 pos;
         Bounds bounds;
 
-        public TerrainChunk(Vector2 coord, int size, Transform parent)
+        // MapData mapData;
+
+        MeshRenderer meshRenderer;
+        MeshFilter meshFilter;
+
+        public TerrainChunk(Vector2 coord, int size, Transform parent, Material mapMaterial)
         {
             pos = coord * size;
             bounds = new Bounds(pos, Vector2.one * size);
             Vector3 posInWorld = new Vector3(pos.x, 0, pos.y);
 
-            // Create a plane to put the mesh onto
-            meshObject = GameObject.CreatePrimitive(PrimitiveType.Plane);
+            // Create a game object to put the mesh onto
+            meshObject = new GameObject("Terrain Chunk");
+            meshRenderer = meshObject.AddComponent<MeshRenderer>();
+            meshRenderer.material = mapMaterial;
+            meshFilter = meshObject.AddComponent<MeshFilter>();
             // Set the position of the chunk in the game world
             meshObject.transform.position = posInWorld;
-            // Set the scale of it to appear larger, divide by 10 as thats the planes default state
-            meshObject.transform.localScale = Vector3.one * size / 10.0f;
             // Attach the chunk to the parent object (MapGenerator in Unity) so it doesnt fill up the heirarchy
             meshObject.transform.parent = parent;
             // Make the chunk invisible
             SetVisible(false);
+
+            mapGenerator.RequestMapData(OnMapDataReceived);
+        }
+
+        // Cant get mesh data directly and avoid this method, as by doing it this way we can only affect the level of detail of a chunk when its needed to be and not every time the viewer moves
+        void OnMapDataReceived(MapData mapData)
+        {
+            mapGenerator.RequestMeshData(mapData, OnMeshDataReceived);
+        }
+
+        void OnMeshDataReceived(MeshData meshData)
+        {
+            meshFilter.mesh = meshData.CreateMesh();
         }
 
         // Find the point on the chunks perimeter that is closest to the viewers position and find the distance between that point and the viewer, and if thats < than then MAX_VIEW_DIST then it'll make sure that the meshObject is enabled otherwise disable it
