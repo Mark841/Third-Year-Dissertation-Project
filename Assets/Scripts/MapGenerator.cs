@@ -14,7 +14,7 @@ public class MapGenerator : MonoBehaviour
     public const int CHUNK_SIZE = 241;
     // The higher the level of detail goes the smaller the chunk size must be, 241 is largest it can be for LoD 6 if more LoD then chunk size must be decreased
     [Range(0, 6)]
-    public int levelOfDetail;
+    public int editorLevelOfDetail;
     [Range(10.0f, 1000.0f)]
     public float noiseScale;
 
@@ -50,7 +50,7 @@ public class MapGenerator : MonoBehaviour
     public void DrawMapInEditor()
     {
         // Make the noise and height maps
-        MapData mapData = GenerateMapData();
+        MapData mapData = GenerateMapData(Vector2.zero);
         // Find the object in unity that is using the MapDisplay script
         MapDisplay display = FindObjectOfType<MapDisplay>();
 
@@ -64,13 +64,13 @@ public class MapGenerator : MonoBehaviour
         }
         else if (drawMode == DrawMode.Mesh)
         { // If the selected mode is to draw the terrain map, then display that
-            display.drawMesh(MeshGenerator.GenerateTerrainMesh(mapData.noiseMap, meshHeightMultiplier, meshHeightCurve, levelOfDetail), TextureGenerator.TextureFromColourMap(mapData.colourMap, CHUNK_SIZE, CHUNK_SIZE));
+            display.drawMesh(MeshGenerator.GenerateTerrainMesh(mapData.noiseMap, meshHeightMultiplier, meshHeightCurve, editorLevelOfDetail), TextureGenerator.TextureFromColourMap(mapData.colourMap, CHUNK_SIZE, CHUNK_SIZE));
         }
     }
 
-    MapData GenerateMapData()
+    MapData GenerateMapData(Vector2 centre)
     {
-        float[,] noiseMap = NoiseGenerator.GenerateNoiseMap(CHUNK_SIZE, CHUNK_SIZE, seed, noiseScale, octaves, persistence, lacunarity, DISTORT_STRENGTH, roughness, offset, xWarpOffset, yWarpOffset, normalise);
+        float[,] noiseMap = NoiseGenerator.GenerateNoiseMap(CHUNK_SIZE, CHUNK_SIZE, seed, noiseScale, octaves, persistence, lacunarity, DISTORT_STRENGTH, roughness, centre + offset, xWarpOffset, yWarpOffset, normalise);
 
         Color[] colourMap = new Color[CHUNK_SIZE * CHUNK_SIZE];
 
@@ -94,15 +94,15 @@ public class MapGenerator : MonoBehaviour
     }
 
     // This method starts other threads for MapData type
-    public void RequestMapData(Action<MapData> callback)
+    public void RequestMapData(Vector2 centre, Action<MapData> callback)
     {
-        ThreadStart threadStart = delegate { MapDataThread(callback); };
+        ThreadStart threadStart = delegate { MapDataThread(centre, callback); };
         new Thread(threadStart).Start();
     }
     // This method will be run on different threads, it generates the terrain for each of the chunks for MapData type
-    void MapDataThread(Action<MapData> callback)
+    void MapDataThread(Vector2 centre, Action<MapData> callback)
     {
-        MapData mapData = GenerateMapData();
+        MapData mapData = GenerateMapData(centre);
 
         // Dont want the queue to be accessed at multiple times by mutliple threads so lock the queue until these lines have been run
         lock (mapDataThreadInfoQueue)
@@ -113,13 +113,13 @@ public class MapGenerator : MonoBehaviour
     }
 
     // This method starts other threads for MeshData type
-    public void RequestMeshData(MapData mapData, Action<MeshData> callback)
+    public void RequestMeshData(MapData mapData, int levelOfDetail, Action<MeshData> callback)
     {
-        ThreadStart threadStart = delegate { MeshDataThread(mapData, callback); };
+        ThreadStart threadStart = delegate { MeshDataThread(mapData, levelOfDetail, callback); };
         new Thread(threadStart).Start();
     }
     // This method will be run on different threads, it generates the terrain for each of the chunks for MapData type
-    void MeshDataThread(MapData mapData, Action<MeshData> callback)
+    void MeshDataThread(MapData mapData, int levelOfDetail, Action<MeshData> callback)
     {
         MeshData meshData = MeshGenerator.GenerateTerrainMesh(mapData.noiseMap, meshHeightMultiplier, meshHeightCurve, levelOfDetail);
 
@@ -156,9 +156,9 @@ public class MapGenerator : MonoBehaviour
 
     private void OnValidate()
     {
-        if (levelOfDetail < 0)
+        if (editorLevelOfDetail < 0)
         {
-            levelOfDetail = 0;
+            editorLevelOfDetail = 0;
         }
         if (noiseScale < 10)
         {
