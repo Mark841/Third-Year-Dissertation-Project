@@ -4,6 +4,8 @@ using UnityEngine;
 
 public class InfiniteSystem : MonoBehaviour
 {
+    const float scale = 10.0f;
+
     const float VIEWER_MOVE_THRESHOLD_FOR_CHUNK_UPDATE = 25.0f;
     const float SQUARE_VIEWER_MOVE_THRESHOLD_FOR_CHUNK_UPDATE = VIEWER_MOVE_THRESHOLD_FOR_CHUNK_UPDATE * VIEWER_MOVE_THRESHOLD_FOR_CHUNK_UPDATE;
     Vector2 viewerPosOld;
@@ -20,7 +22,7 @@ public class InfiniteSystem : MonoBehaviour
     int chunkVisibleInViewDist;
 
     Dictionary<Vector2, TerrainChunk> terrainChunkDict = new Dictionary<Vector2, TerrainChunk>();
-    List<TerrainChunk> terrainChunksVisibleLastUpdate = new List<TerrainChunk>();
+    static List<TerrainChunk> terrainChunksVisibleLastUpdate = new List<TerrainChunk>();
 
     private void Start()
     {
@@ -35,7 +37,7 @@ public class InfiniteSystem : MonoBehaviour
     // Method called on each frame
     private void Update()
     {
-        viewerPos = new Vector2(viewer.position.x, viewer.position.z);
+        viewerPos = new Vector2(viewer.position.x, viewer.position.z) / scale;
 
         // This if statement makes it so the chunks dont updsate every frame but only when the vieweer has moved past a certain threshold amount
         // To have it update the chunks every frame remove the if and just have the "UpdateVisibleChunks();" line
@@ -70,10 +72,6 @@ public class InfiniteSystem : MonoBehaviour
                 if (terrainChunkDict.ContainsKey(viewedChunkCoord))
                 { // If the chunk already exists in the key, update that chunk
                     terrainChunkDict[viewedChunkCoord].UpdateTerrainChunk();
-                    if (terrainChunkDict[viewedChunkCoord].IsVisible())
-                    {
-                        terrainChunksVisibleLastUpdate.Add(terrainChunkDict[viewedChunkCoord]);
-                    }
                 }
                 else
                 { // If the chunk doesn't exist yet add it to the dictionary
@@ -117,9 +115,11 @@ public class InfiniteSystem : MonoBehaviour
             meshRenderer.material = mapMaterial;
             meshFilter = meshObject.AddComponent<MeshFilter>();
             // Set the position of the chunk in the game world
-            meshObject.transform.position = posInWorld;
+            meshObject.transform.position = posInWorld * scale;
             // Attach the chunk to the parent object (MapGenerator in Unity) so it doesnt fill up the heirarchy
             meshObject.transform.parent = parent;
+            // Set the scale of the chunk
+            meshObject.transform.localScale = Vector3.one * scale;
             // Make the chunk invisible
             SetVisible(false);
 
@@ -183,6 +183,8 @@ public class InfiniteSystem : MonoBehaviour
                             lodMesh.RequestMesh(mapData);
                         }
                     }
+                    // Update the chunks visible last update list here to avoid having some chunks stay visible even if they aren't near the viewer
+                    terrainChunksVisibleLastUpdate.Add(this);
                 }
 
                 SetVisible(visible);

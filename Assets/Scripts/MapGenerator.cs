@@ -10,6 +10,8 @@ public class MapGenerator : MonoBehaviour
     public enum DrawMode { NoiseMap, ColourMap, Mesh };
     public DrawMode drawMode;
 
+    public NoiseGenerator.NormaliseMode normaliseMode;
+
     // Must be 241 or below in size otherwise the LevelOfDetail functionality breaks as the list index goes out of bounds
     public const int CHUNK_SIZE = 241;
     // The higher the level of detail goes the smaller the chunk size must be, 241 is largest it can be for LoD 6 if more LoD then chunk size must be decreased
@@ -70,7 +72,7 @@ public class MapGenerator : MonoBehaviour
 
     MapData GenerateMapData(Vector2 centre)
     {
-        float[,] noiseMap = NoiseGenerator.GenerateNoiseMap(CHUNK_SIZE, CHUNK_SIZE, seed, noiseScale, octaves, persistence, lacunarity, DISTORT_STRENGTH, roughness, centre + offset, xWarpOffset, yWarpOffset, normalise);
+        float[,] noiseMap = NoiseGenerator.GenerateNoiseMap(CHUNK_SIZE, CHUNK_SIZE, seed, noiseScale, octaves, persistence, lacunarity, DISTORT_STRENGTH, roughness, centre + offset, xWarpOffset, yWarpOffset, normalise, normaliseMode);
 
         Color[] colourMap = new Color[CHUNK_SIZE * CHUNK_SIZE];
 
@@ -81,9 +83,12 @@ public class MapGenerator : MonoBehaviour
                 float currentHeight = noiseMap[x, y];
                 for (int i=0; i < regions.Length; i++)
                 {
-                    if (currentHeight <= regions[i].height)
+                    if (currentHeight >= regions[i].height)
                     {
                         colourMap[y * CHUNK_SIZE + x] = regions[i].colour;
+                    }
+                    else
+                    {
                         break;
                     }
                 }
