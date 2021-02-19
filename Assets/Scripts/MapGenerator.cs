@@ -7,7 +7,7 @@ using UnityEngine;
 public class MapGenerator : MonoBehaviour
 {
     // These are the list of settings the user can change in the Unity inspector that will affect the terrain
-    public enum DrawMode { NoiseMap, ColourMap, Mesh };
+    public enum DrawMode { NoiseMap, ColourMap, Mesh, FalloffMap };
     public DrawMode drawMode;
 
     public NoiseGenerator.NormaliseMode normaliseMode;
@@ -39,6 +39,16 @@ public class MapGenerator : MonoBehaviour
     public float meshHeightMultiplier;
     public AnimationCurve meshHeightCurve;
 
+
+    // Use the falloff map to create clusters of islands or not
+    public bool useFalloffMap;
+    // Variable to use in the falloff maps equation to control how big a falloff to have
+    [Range(1.0f, 10.0f)]
+    public float falloffSize = 3.0f;
+    // Variable to use in the falloff maps equation to control how strong a falloff to have
+    [Range(1.0f, 10.0f)]
+    public float falloffDistToEdge = 2.2f;
+
     // Normalise affects whether the nosie will be normalised or not
     public bool normalise;
     // This determines if the terrain will update when a value is changed or only when the update button is pressed
@@ -46,8 +56,15 @@ public class MapGenerator : MonoBehaviour
 
     public TerrainType[] regions;
 
+    float[,] falloffMap;
+
     Queue<MapThreadInfo<MapData>> mapDataThreadInfoQueue = new Queue<MapThreadInfo<MapData>>();
     Queue<MapThreadInfo<MeshData>> meshDataThreadInfoQueue = new Queue<MapThreadInfo<MeshData>>();
+
+    private void Awake()
+    {
+        falloffMap = FalloffGenerator.GenerateFalloffMap(CHUNK_SIZE, falloffSize, falloffDistToEdge);
+    }
 
     public void DrawMapInEditor()
     {
@@ -68,6 +85,10 @@ public class MapGenerator : MonoBehaviour
         { // If the selected mode is to draw the terrain map, then display that
             display.drawMesh(MeshGenerator.GenerateTerrainMesh(mapData.noiseMap, meshHeightMultiplier, meshHeightCurve, editorLevelOfDetail), TextureGenerator.TextureFromColourMap(mapData.colourMap, CHUNK_SIZE, CHUNK_SIZE));
         }
+        else if (drawMode == DrawMode.FalloffMap)
+        { // If the selected mode is to draw the terrain map, then display that
+            display.drawTexture(TextureGenerator.TextureFromHeightMap(FalloffGenerator.GenerateFalloffMap(CHUNK_SIZE, falloffSize, falloffDistToEdge)));
+        }
     }
 
     MapData GenerateMapData(Vector2 centre)
@@ -80,8 +101,14 @@ public class MapGenerator : MonoBehaviour
         {
             for (int x = 0; x < CHUNK_SIZE; x++)
             {
+                if (useFalloffMap)
+                {
+                    noiseMap[x, y] = noiseMap[x, y] * (1 - falloffMap[x, y]);
+                }
+
                 float currentHeight = noiseMap[x, y];
-                for (int i=0; i < regions.Length; i++)
+                
+                for (int i = 0; i < regions.Length; i++)
                 {
                     if (currentHeight >= regions[i].height)
                     {
@@ -181,6 +208,9 @@ public class MapGenerator : MonoBehaviour
         {
             octaves = 0;
         }
+        
+        // Sometimes the game may not be being run so the Awake method wont be called
+        falloffMap = FalloffGenerator.GenerateFalloffMap(CHUNK_SIZE, falloffSize, falloffDistToEdge);
     }
 
     // Struct is generic to handle both Map and Mesh data
