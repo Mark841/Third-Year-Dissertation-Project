@@ -123,7 +123,7 @@ public class InfiniteSystem : MonoBehaviour
             // Make the chunk invisible
             SetVisible(false);
 
-            // Set teh level of detail for each chunk
+            // Set the level of detail for each chunk
             lodMeshes = new LODMesh[detailLevels.Length];
             for (int i = 0; i < detailLevels.Length; i++)
             {
