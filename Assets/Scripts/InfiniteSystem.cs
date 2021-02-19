@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class InfiniteSystem : MonoBehaviour
 {
-    const float scale = 10.0f;
+    const float scale = MapGenerator.infiniteTerrainScale;
 
     const float VIEWER_MOVE_THRESHOLD_FOR_CHUNK_UPDATE = 25.0f;
     const float SQUARE_VIEWER_MOVE_THRESHOLD_FOR_CHUNK_UPDATE = VIEWER_MOVE_THRESHOLD_FOR_CHUNK_UPDATE * VIEWER_MOVE_THRESHOLD_FOR_CHUNK_UPDATE;

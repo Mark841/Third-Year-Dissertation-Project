@@ -88,7 +88,7 @@ public static class NoiseGenerator
                     // If the terrain is endless don't want seams between chunks
                     else
                     {
-                        float normalisedHeight = (noiseMap[x, y] + 1) / (2.0f * maxPossHeight / 1.5f);
+                        float normalisedHeight = (noiseMap[x, y] + 1) / (2.0f * maxPossHeight / 1.4f);
                         noiseMap[x, y] = Mathf.Clamp(normalisedHeight, 0, int.MaxValue);
                     }
                 }

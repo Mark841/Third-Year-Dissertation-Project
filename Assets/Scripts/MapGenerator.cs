@@ -19,6 +19,7 @@ public class MapGenerator : MonoBehaviour
     public int editorLevelOfDetail;
     [Range(10.0f, 1000.0f)]
     public float noiseScale;
+    public const float infiniteTerrainScale = 10.0f;
 
     [Range(1, 10)]
     public int octaves;
@@ -39,8 +40,9 @@ public class MapGenerator : MonoBehaviour
     public float meshHeightMultiplier;
     public AnimationCurve meshHeightCurve;
 
-
-    // Use the falloff map to create clusters of islands or not
+    // Use the falloff map per chunk
+    public bool useFalloffMapPerChunk;
+    // Use the falloff map to create clusters of islands across a 3x3 chunk grid or not
     public bool useFalloffMap;
     // Variable to use in the falloff maps equation to control how big a falloff to have
     [Range(1.0f, 10.0f)]
@@ -56,6 +58,7 @@ public class MapGenerator : MonoBehaviour
 
     public TerrainType[] regions;
 
+    float[,] falloffMapPerChunk;
     float[,] falloffMap;
 
     Queue<MapThreadInfo<MapData>> mapDataThreadInfoQueue = new Queue<MapThreadInfo<MapData>>();
@@ -63,7 +66,8 @@ public class MapGenerator : MonoBehaviour
 
     private void Awake()
     {
-        falloffMap = FalloffGenerator.GenerateFalloffMap(CHUNK_SIZE, falloffSize, falloffDistToEdge);
+        falloffMap = FalloffGenerator.GenerateFalloffMap(3 * CHUNK_SIZE, falloffSize, falloffDistToEdge);
+        falloffMapPerChunk = FalloffGenerator.GenerateFalloffMap(CHUNK_SIZE, falloffSize, falloffDistToEdge);
     }
 
     public void DrawMapInEditor()
@@ -86,8 +90,15 @@ public class MapGenerator : MonoBehaviour
             display.drawMesh(MeshGenerator.GenerateTerrainMesh(mapData.noiseMap, meshHeightMultiplier, meshHeightCurve, editorLevelOfDetail), TextureGenerator.TextureFromColourMap(mapData.colourMap, CHUNK_SIZE, CHUNK_SIZE));
         }
         else if (drawMode == DrawMode.FalloffMap)
-        { // If the selected mode is to draw the terrain map, then display that
-            display.drawTexture(TextureGenerator.TextureFromHeightMap(FalloffGenerator.GenerateFalloffMap(CHUNK_SIZE, falloffSize, falloffDistToEdge)));
+        { // If the selected mode is to draw the falloff map, then display that
+            if (useFalloffMapPerChunk)
+            {
+                display.drawTexture(TextureGenerator.TextureFromHeightMap(FalloffGenerator.GenerateFalloffMap(CHUNK_SIZE, falloffSize, falloffDistToEdge)));
+            }
+            else
+            {
+                display.drawTexture(TextureGenerator.TextureFromHeightMap(FalloffGenerator.GenerateFalloffMap(3 * CHUNK_SIZE, falloffSize, falloffDistToEdge)));
+            }
         }
     }
 
@@ -101,9 +112,57 @@ public class MapGenerator : MonoBehaviour
         {
             for (int x = 0; x < CHUNK_SIZE; x++)
             {
-                if (useFalloffMap)
+                if (useFalloffMapPerChunk && !useFalloffMap)
                 {
-                    noiseMap[x, y] = noiseMap[x, y] * (1 - falloffMap[x, y]);
+                    noiseMap[x, y] = noiseMap[x, y] * (1 - falloffMapPerChunk[x, y]);
+                }
+                if (useFalloffMap && !useFalloffMapPerChunk)
+                {
+                    // Centre of falloff
+                    if ((centre.x / 240 * infiniteTerrainScale) % 3 == 0 && (centre.y / 240 * infiniteTerrainScale) % 3 == 0)
+                    {
+                        noiseMap[x, y] = noiseMap[x, y];
+                    }
+                    // Right chunk
+                    else if (((centre.x / 240 * infiniteTerrainScale) % 3 == 1 && (centre.y / 240 * infiniteTerrainScale) % 3 == 0) || ((centre.x / 240 * infiniteTerrainScale) % 3 == -2 && (centre.y / 240 * infiniteTerrainScale) % 3 == 0))
+                    {
+                        noiseMap[x, y] = noiseMap[x, y] * (1 - falloffMap[(2 * CHUNK_SIZE) + x, CHUNK_SIZE + y]);
+                    }
+                    // Bottom right chunk
+                    else if (((centre.x / 240 * infiniteTerrainScale) % 3 == 1 && (centre.y / 240 * infiniteTerrainScale) % 3 == -1) || ((centre.x / 240 * infiniteTerrainScale) % 3 == -2 && (centre.y / 240 * infiniteTerrainScale) % 3 == 2) || ((centre.x / 240 * infiniteTerrainScale) % 3 == 1 && (centre.y / 240 * infiniteTerrainScale) % 3 == 2) || ((centre.x / 240 * infiniteTerrainScale) % 3 == -2 && (centre.y / 240 * infiniteTerrainScale) % 3 == -1))
+                    {
+                        noiseMap[x, y] = noiseMap[x, y] * (1 - falloffMap[(2 * CHUNK_SIZE) + x, (2 * CHUNK_SIZE) + y]);
+                    }
+                    // Bottom chunk
+                    else if (((centre.x / 240 * infiniteTerrainScale) % 3 == 0 && (centre.y / 240 * infiniteTerrainScale) % 3 == -1) || ((centre.x / 240 * infiniteTerrainScale) % 3 == 0 && (centre.y / 240 * infiniteTerrainScale) % 3 == 2))
+                    {
+                        noiseMap[x, y] = noiseMap[x, y] * (1 - falloffMap[CHUNK_SIZE + x, (2 * CHUNK_SIZE) + y]);
+                    }
+                    // Bottom left chunk
+                    else if (((centre.x / 240 * infiniteTerrainScale) % 3 == -1 && (centre.y / 240 * infiniteTerrainScale) % 3 == -1) || ((centre.x / 240 * infiniteTerrainScale) % 3 == -1 && (centre.y / 240 * infiniteTerrainScale) % 3 == 2) || ((centre.x / 240 * infiniteTerrainScale) % 3 == 2 && (centre.y / 240 * infiniteTerrainScale) % 3 == 2) || ((centre.x / 240 * infiniteTerrainScale) % 3 == 2 && (centre.y / 240 * infiniteTerrainScale) % 3 == -1))
+                    {
+                        noiseMap[x, y] = noiseMap[x, y] * (1 - falloffMap[x, (2 * CHUNK_SIZE) + y]);
+                    }
+                    // Left chunk
+                    else if (((centre.x / 240 * infiniteTerrainScale) % 3 == -1 && (centre.y / 240 * infiniteTerrainScale) % 3 == 0) || ((centre.x / 240 * infiniteTerrainScale) % 3 == 2 && (centre.y / 240 * infiniteTerrainScale) % 3 == 0))
+                    {
+                        noiseMap[x, y] = noiseMap[x, y] * (1 - falloffMap[x, CHUNK_SIZE + y]);
+                    }
+                    // Top left chunk
+                    else if (((centre.x / 240 * infiniteTerrainScale) % 3 == -1 && (centre.y / 240 * infiniteTerrainScale) % 3 == 1) || ((centre.x / 240 * infiniteTerrainScale) % 3 == 2 && (centre.y / 240 * infiniteTerrainScale) % 3 == 1) || ((centre.x / 240 * infiniteTerrainScale) % 3 == 2 && (centre.y / 240 * infiniteTerrainScale) % 3 == -2) || ((centre.x / 240 * infiniteTerrainScale) % 3 == -1 && (centre.y / 240 * infiniteTerrainScale) % 3 == -2))
+                    {
+                        noiseMap[x, y] = noiseMap[x, y] * (1 - falloffMap[x, y]);
+                    }
+                    // Top chunk
+                    else if (((centre.x / 240 * infiniteTerrainScale) % 3 == 0 && (centre.y / 240 * infiniteTerrainScale) % 3 == 1) || ((centre.x / 240 * infiniteTerrainScale) % 3 == 0 && (centre.y / 240 * infiniteTerrainScale) % 3 == -2))
+                    {
+                        noiseMap[x, y] = noiseMap[x, y] * (1 - falloffMap[CHUNK_SIZE + x, y]);
+                    }
+                    // Top right chunk
+                    else if (((centre.x / 240 * infiniteTerrainScale) % 3 == 1 && (centre.y / 240 * infiniteTerrainScale) % 3 == 1) || ((centre.x / 240 * infiniteTerrainScale) % 3 == -2 && (centre.y / 240 * infiniteTerrainScale) % 3 == 1) || ((centre.x / 240 * infiniteTerrainScale) % 3 == -2 && (centre.y / 240 * infiniteTerrainScale) % 3 == -2) || ((centre.x / 240 * infiniteTerrainScale) % 3 == 1 && (centre.y / 240 * infiniteTerrainScale) % 3 == -2))
+                    {
+                        noiseMap[x, y] = noiseMap[x, y] * (1 - falloffMap[(2 * CHUNK_SIZE) + x, y]);
+                    }
                 }
 
                 float currentHeight = noiseMap[x, y];
@@ -210,7 +269,8 @@ public class MapGenerator : MonoBehaviour
         }
         
         // Sometimes the game may not be being run so the Awake method wont be called
-        falloffMap = FalloffGenerator.GenerateFalloffMap(CHUNK_SIZE, falloffSize, falloffDistToEdge);
+        falloffMap = FalloffGenerator.GenerateFalloffMap(3 * CHUNK_SIZE, falloffSize, falloffDistToEdge);
+        falloffMapPerChunk = FalloffGenerator.GenerateFalloffMap(CHUNK_SIZE, falloffSize, falloffDistToEdge);
     }
 
     // Struct is generic to handle both Map and Mesh data
