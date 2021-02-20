@@ -25,9 +25,10 @@ public static class MeshGenerator
         int meshVertexIndex = 0;
         int borderVertexIndex = -1;
 
-        for (int y = 0; y < meshWithBorderSize; y += meshSimplificationIncrement)
+        // This section needs its own loop as the next section accesses values that are being set here but in further along indexes, so cant get them and then access them in same loop as tries accessing before they're set
+        for (int x = 0; x < meshWithBorderSize; x += meshSimplificationIncrement)
         {
-            for (int x = 0; x < meshWithBorderSize; x += meshSimplificationIncrement)
+            for (int y = 0; y < meshWithBorderSize; y += meshSimplificationIncrement)
             {
                 bool isBorderVertex = (y == 0) || (y == meshWithBorderSize - 1) || (x == 0) || (x == meshWithBorderSize - 1);
                 if (isBorderVertex)
@@ -43,9 +44,9 @@ public static class MeshGenerator
             }
         }
 
-        for (int y = 0; y < meshWithBorderSize; y += meshSimplificationIncrement)
+        for (int x = 0; x < meshWithBorderSize; x += meshSimplificationIncrement)
         {
-            for (int x = 0; x < meshWithBorderSize; x += meshSimplificationIncrement)
+            for (int y = 0; y < meshWithBorderSize; y += meshSimplificationIncrement)
             {
                 int vertexIndex = vertexIndicesMap[x, y];
 
@@ -135,7 +136,7 @@ public class MeshData
     Vector3[] CalculateNormals()
     {
         Vector3[] vertexNormals = new Vector3[vertices.Length];
-        // Divide by 3 as that stores each vertex of a triangle but we want amount fo them
+        // Divide by 3 as that stores each vertex of a triangle but we want amount of them
         int triangleAmount = triangles.Length / 3;
         for (int i = 0; i < triangleAmount; i++)
         {
@@ -150,7 +151,7 @@ public class MeshData
             vertexNormals[vertexIndexC] += triNormal;
         }
 
-        // Divide by 3 as that stores each vertex of a triangle but we want amount fo them
+        // Divide by 3 as that stores each vertex of a triangle but we want amount of them
         int borderTriAmount = borderTriangles.Length / 3;
         for (int i = 0; i < borderTriAmount; i++)
         {
