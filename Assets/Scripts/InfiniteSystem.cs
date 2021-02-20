@@ -130,8 +130,11 @@ public class InfiniteSystem : MonoBehaviour
             lodMeshes = new LODMesh[detailLevels.Length];
             for (int i = 0; i < detailLevels.Length; i++)
             {
+                // Updates the chunks mesh to be using this level of detail
                 lodMeshes[i] = new LODMesh(detailLevels[i].levelOfDetail, UpdateTerrainChunk);
-                if (detailLevels[i].useACollider)
+
+                // Set the terrain chunks collider mesh to have the amount of vertices at this level of detail that was chosen, the higher the level of detail selected to useForColliderMesh, the more vertices the mesh will use, making it slower but more accurate with where the user should be standing and so on
+                if (detailLevels[i].useForColliderMesh)
                 {
                     collisionLODMesh = lodMeshes[i];
                 }
@@ -197,7 +200,6 @@ public class InfiniteSystem : MonoBehaviour
                         {
                             meshCollider.sharedMesh = collisionLODMesh.mesh;
                         }
-                        // ESLE IF MAY NOT BE NEEDED
                         else if (!collisionLODMesh.hasRequestedMesh)
                         {
                             collisionLODMesh.RequestMesh(mapData);
@@ -263,6 +265,6 @@ public class InfiniteSystem : MonoBehaviour
         public int levelOfDetail;
         // If the viewer is outside of this threshold decrease the level of detail
         public float viewerDistThreshold;
-        public bool useACollider;
+        public bool useForColliderMesh;
     }
 }
