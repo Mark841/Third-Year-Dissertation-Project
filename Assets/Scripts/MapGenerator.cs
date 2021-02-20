@@ -12,8 +12,8 @@ public class MapGenerator : MonoBehaviour
 
     public NoiseGenerator.NormaliseMode normaliseMode;
 
-    // Must be 241 or below in size otherwise the LevelOfDetail functionality breaks as the list index goes out of bounds
-    public const int CHUNK_SIZE = 241;
+    // Must be 241 or below in size otherwise the LevelOfDetail functionality breaks as the list index goes out of bounds, value needs to be divisible by all of the mesh simplification increments, its not atm as its got -2 taken from it as this is added when being passed into the noise map method
+    public const int CHUNK_SIZE = 239;
     // The higher the level of detail goes the smaller the chunk size must be, 241 is largest it can be for LoD 6 if more LoD then chunk size must be decreased
     [Range(0, 6)]
     public int editorLevelOfDetail;
@@ -43,7 +43,7 @@ public class MapGenerator : MonoBehaviour
     // Use the falloff map per chunk
     public bool useFalloffMapPerChunk;
     // Use the falloff map to create clusters of islands across a 3x3 chunk grid or not
-    public bool useFalloffMap;
+    public bool useFalloffMapPer9Chunks;
     // Variable to use in the falloff maps equation to control how big a falloff to have
     [Range(1.0f, 10.0f)]
     public float falloffSize = 3.0f;
@@ -104,7 +104,7 @@ public class MapGenerator : MonoBehaviour
 
     MapData GenerateMapData(Vector2 centre)
     {
-        float[,] noiseMap = NoiseGenerator.GenerateNoiseMap(CHUNK_SIZE, CHUNK_SIZE, seed, noiseScale, octaves, persistence, lacunarity, DISTORT_STRENGTH, roughness, centre + offset, xWarpOffset, yWarpOffset, normalise, normaliseMode);
+        float[,] noiseMap = NoiseGenerator.GenerateNoiseMap(CHUNK_SIZE + 2, CHUNK_SIZE + 2, seed, noiseScale, octaves, persistence, lacunarity, DISTORT_STRENGTH, roughness, centre + offset, xWarpOffset, yWarpOffset, normalise, normaliseMode);
 
         Color[] colourMap = new Color[CHUNK_SIZE * CHUNK_SIZE];
 
@@ -112,11 +112,11 @@ public class MapGenerator : MonoBehaviour
         {
             for (int x = 0; x < CHUNK_SIZE; x++)
             {
-                if (useFalloffMapPerChunk && !useFalloffMap)
+                if (useFalloffMapPerChunk && !useFalloffMapPer9Chunks)
                 {
                     noiseMap[x, y] = noiseMap[x, y] * (1 - falloffMapPerChunk[x, y]);
                 }
-                if (useFalloffMap && !useFalloffMapPerChunk)
+                if (useFalloffMapPer9Chunks && !useFalloffMapPerChunk)
                 {
                     int modulus = 3;
                     // Centre of falloff
