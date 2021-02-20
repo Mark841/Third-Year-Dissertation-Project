@@ -60,9 +60,10 @@
     <Compile Include="Assets\Scripts\NoiseGenerator.cs" />
     <Compile Include="Assets\Scripts\InfiniteSystem.cs" />
     <Compile Include="Assets\Scripts\MeshGenerator.cs" />
+    <Compile Include="Assets\Scripts\FalloffGenerator.cs" />
     <Compile Include="Assets\Scripts\MapDisplay.cs" />
     <Compile Include="Assets\Scripts\MapGenerator.cs" />
-    <Compile Include="Assets\Scripts\FalloffGenerator.cs" />
+    <Compile Include="Assets\Scripts\HideOnPlay.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="UnityEngine">
@@ -628,6 +629,10 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="Assembly-CSharp-firstpass.csproj">
+      <Project>{A4EF5DF4-2552-6B8E-BFAE-C8C4E05441E8}</Project>
+      <Name>Assembly-CSharp-firstpass</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="GenerateTargetFrameworkMonikerAttribute" />

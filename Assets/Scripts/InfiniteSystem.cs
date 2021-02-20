@@ -92,9 +92,11 @@ public class InfiniteSystem : MonoBehaviour
 
         MeshRenderer meshRenderer;
         MeshFilter meshFilter;
+        MeshCollider meshCollider;
 
         levelOfDetailInfo[] detailLevels;
         LODMesh[] lodMeshes;
+        LODMesh collisionLODMesh;
 
         MapData mapData;
         bool mapDataReceived;
@@ -114,6 +116,7 @@ public class InfiniteSystem : MonoBehaviour
             meshRenderer = meshObject.AddComponent<MeshRenderer>();
             meshRenderer.material = mapMaterial;
             meshFilter = meshObject.AddComponent<MeshFilter>();
+            meshCollider = meshObject.AddComponent<MeshCollider>();
             // Set the position of the chunk in the game world
             meshObject.transform.position = posInWorld * scale;
             // Attach the chunk to the parent object (MapGenerator in Unity) so it doesnt fill up the heirarchy
@@ -128,6 +131,10 @@ public class InfiniteSystem : MonoBehaviour
             for (int i = 0; i < detailLevels.Length; i++)
             {
                 lodMeshes[i] = new LODMesh(detailLevels[i].levelOfDetail, UpdateTerrainChunk);
+                if (detailLevels[i].useACollider)
+                {
+                    collisionLODMesh = lodMeshes[i];
+                }
             }
 
             mapGenerator.RequestMapData(pos, OnMapDataReceived);
@@ -183,6 +190,20 @@ public class InfiniteSystem : MonoBehaviour
                             lodMesh.RequestMesh(mapData);
                         }
                     }
+
+                    if (lodIndex == 0)
+                    {
+                        if (collisionLODMesh.hasMesh)
+                        {
+                            meshCollider.sharedMesh = collisionLODMesh.mesh;
+                        }
+                        // ESLE IF MAY NOT BE NEEDED
+                        else if (!collisionLODMesh.hasRequestedMesh)
+                        {
+                            collisionLODMesh.RequestMesh(mapData);
+                        }
+                    }
+
                     // Update the chunks visible last update list here to avoid having some chunks stay visible even if they aren't near the viewer
                     terrainChunksVisibleLastUpdate.Add(this);
                 }
@@ -242,5 +263,6 @@ public class InfiniteSystem : MonoBehaviour
         public int levelOfDetail;
         // If the viewer is outside of this threshold decrease the level of detail
         public float viewerDistThreshold;
+        public bool useACollider;
     }
 }
