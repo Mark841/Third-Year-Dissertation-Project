@@ -66,8 +66,8 @@ public class MapGenerator : MonoBehaviour
 
     private void Awake()
     {
-        falloffMap = FalloffGenerator.GenerateFalloffMap(3 * CHUNK_SIZE, falloffSize, falloffDistToEdge);
-        falloffMapPerChunk = FalloffGenerator.GenerateFalloffMap(CHUNK_SIZE, falloffSize, falloffDistToEdge);
+        falloffMap = FalloffGenerator.GenerateFalloffMap(3 * (CHUNK_SIZE + 2), falloffSize, falloffDistToEdge);
+        falloffMapPerChunk = FalloffGenerator.GenerateFalloffMap(CHUNK_SIZE + 2, falloffSize, falloffDistToEdge);
     }
 
     public void DrawMapInEditor()
@@ -93,11 +93,11 @@ public class MapGenerator : MonoBehaviour
         { // If the selected mode is to draw the falloff map, then display that
             if (useFalloffMapPerChunk)
             {
-                display.drawTexture(TextureGenerator.TextureFromHeightMap(FalloffGenerator.GenerateFalloffMap(CHUNK_SIZE, falloffSize, falloffDistToEdge)));
+                display.drawTexture(TextureGenerator.TextureFromHeightMap(FalloffGenerator.GenerateFalloffMap(CHUNK_SIZE + 2, falloffSize, falloffDistToEdge)));
             }
             else
             {
-                display.drawTexture(TextureGenerator.TextureFromHeightMap(FalloffGenerator.GenerateFalloffMap(3 * CHUNK_SIZE, falloffSize, falloffDistToEdge)));
+                display.drawTexture(TextureGenerator.TextureFromHeightMap(FalloffGenerator.GenerateFalloffMap(3 * (CHUNK_SIZE + 2), falloffSize, falloffDistToEdge)));
             }
         }
     }
@@ -108,67 +108,75 @@ public class MapGenerator : MonoBehaviour
 
         Color[] colourMap = new Color[CHUNK_SIZE * CHUNK_SIZE];
 
+        if (useFalloffMapPerChunk || useFalloffMapPer9Chunks)
+        {
+            for (int y = 0; y < CHUNK_SIZE + 2; y++)
+            {
+                for (int x = 0; x < CHUNK_SIZE + 2; x++)
+                {
+                    if (useFalloffMapPerChunk && !useFalloffMapPer9Chunks)
+                    {
+                        noiseMap[x, y] = noiseMap[x, y] * (1 - falloffMapPerChunk[x, y]);
+                    }
+                    if (useFalloffMapPer9Chunks && !useFalloffMapPerChunk)
+                    {
+                        int modulus = 3;
+                        int chunkCoordInterval = 238;
+                        // Centre of the falloff
+                        if ((centre.x / chunkCoordInterval * infiniteTerrainScale) % modulus == 0 && (centre.y / chunkCoordInterval * infiniteTerrainScale) % modulus == 0)
+                        {
+                            noiseMap[x, y] = noiseMap[x, y];
+                        }
+                        // Right chunk
+                        else if (((centre.x / chunkCoordInterval * infiniteTerrainScale) % modulus == 1 && (centre.y / chunkCoordInterval * infiniteTerrainScale) % modulus == 0) || ((centre.x / chunkCoordInterval * infiniteTerrainScale) % modulus == -2 && (centre.y / chunkCoordInterval * infiniteTerrainScale) % modulus == 0))
+                        {
+                            noiseMap[x, y] = noiseMap[x, y] * (1 - falloffMap[(2 * CHUNK_SIZE) + x, CHUNK_SIZE + y]);
+                        }
+                        // Bottom right chunk
+                        else if (((centre.x / chunkCoordInterval * infiniteTerrainScale) % modulus == 1 && (centre.y / chunkCoordInterval * infiniteTerrainScale) % modulus == -1) || ((centre.x / chunkCoordInterval * infiniteTerrainScale) % modulus == -2 && (centre.y / chunkCoordInterval * infiniteTerrainScale) % modulus == 2) || ((centre.x / chunkCoordInterval * infiniteTerrainScale) % modulus == 1 && (centre.y / chunkCoordInterval * infiniteTerrainScale) % modulus == 2) || ((centre.x / chunkCoordInterval * infiniteTerrainScale) % modulus == -2 && (centre.y / chunkCoordInterval * infiniteTerrainScale) % modulus == -1))
+                        {
+                            noiseMap[x, y] = noiseMap[x, y] * (1 - falloffMap[(2 * CHUNK_SIZE) + x, (2 * CHUNK_SIZE) + y]);
+                        }
+                        // Bottom chunk
+                        else if (((centre.x / chunkCoordInterval * infiniteTerrainScale) % modulus == 0 && (centre.y / chunkCoordInterval * infiniteTerrainScale) % modulus == -1) || ((centre.x / chunkCoordInterval * infiniteTerrainScale) % modulus == 0 && (centre.y / chunkCoordInterval * infiniteTerrainScale) % modulus == 2))
+                        {
+                            noiseMap[x, y] = noiseMap[x, y] * (1 - falloffMap[CHUNK_SIZE + x, (2 * CHUNK_SIZE) + y]);
+                        }
+                        // Bottom left chunk
+                        else if (((centre.x / chunkCoordInterval * infiniteTerrainScale) % modulus == -1 && (centre.y / chunkCoordInterval * infiniteTerrainScale) % modulus == -1) || ((centre.x / chunkCoordInterval * infiniteTerrainScale) % modulus == -1 && (centre.y / chunkCoordInterval * infiniteTerrainScale) % modulus == 2) || ((centre.x / chunkCoordInterval * infiniteTerrainScale) % modulus == 2 && (centre.y / chunkCoordInterval * infiniteTerrainScale) % modulus == 2) || ((centre.x / chunkCoordInterval * infiniteTerrainScale) % modulus == 2 && (centre.y / chunkCoordInterval * infiniteTerrainScale) % modulus == -1))
+                        {
+                            noiseMap[x, y] = noiseMap[x, y] * (1 - falloffMap[x, (2 * CHUNK_SIZE) + y]);
+                        }
+                        // Left chunk
+                        else if (((centre.x / chunkCoordInterval * infiniteTerrainScale) % modulus == -1 && (centre.y / chunkCoordInterval * infiniteTerrainScale) % modulus == 0) || ((centre.x / chunkCoordInterval * infiniteTerrainScale) % modulus == 2 && (centre.y / chunkCoordInterval * infiniteTerrainScale) % modulus == 0))
+                        {
+                            noiseMap[x, y] = noiseMap[x, y] * (1 - falloffMap[x, CHUNK_SIZE + y]);
+                        }
+                        // Top left chunk
+                        else if (((centre.x / chunkCoordInterval * infiniteTerrainScale) % modulus == -1 && (centre.y / chunkCoordInterval * infiniteTerrainScale) % modulus == 1) || ((centre.x / chunkCoordInterval * infiniteTerrainScale) % modulus == 2 && (centre.y / chunkCoordInterval * infiniteTerrainScale) % modulus == 1) || ((centre.x / chunkCoordInterval * infiniteTerrainScale) % modulus == 2 && (centre.y / chunkCoordInterval * infiniteTerrainScale) % modulus == -2) || ((centre.x / chunkCoordInterval * infiniteTerrainScale) % modulus == -1 && (centre.y / chunkCoordInterval * infiniteTerrainScale) % modulus == -2))
+                        {
+                            noiseMap[x, y] = noiseMap[x, y] * (1 - falloffMap[x, y]);
+                        }
+                        // Top chunk
+                        else if (((centre.x / chunkCoordInterval * infiniteTerrainScale) % modulus == 0 && (centre.y / chunkCoordInterval * infiniteTerrainScale) % modulus == 1) || ((centre.x / chunkCoordInterval * infiniteTerrainScale) % modulus == 0 && (centre.y / chunkCoordInterval * infiniteTerrainScale) % modulus == -2))
+                        {
+                            noiseMap[x, y] = noiseMap[x, y] * (1 - falloffMap[CHUNK_SIZE + x, y]);
+                        }
+                        // Top right chunk
+                        else if (((centre.x / chunkCoordInterval * infiniteTerrainScale) % modulus == 1 && (centre.y / chunkCoordInterval * infiniteTerrainScale) % modulus == 1) || ((centre.x / chunkCoordInterval * infiniteTerrainScale) % modulus == -2 && (centre.y / chunkCoordInterval * infiniteTerrainScale) % modulus == 1) || ((centre.x / chunkCoordInterval * infiniteTerrainScale) % modulus == -2 && (centre.y / chunkCoordInterval * infiniteTerrainScale) % modulus == -2) || ((centre.x / chunkCoordInterval * infiniteTerrainScale) % modulus == 1 && (centre.y / chunkCoordInterval * infiniteTerrainScale) % modulus == -2))
+                        {
+                            noiseMap[x, y] = noiseMap[x, y] * (1 - falloffMap[(2 * CHUNK_SIZE) + x, y]);
+                        }
+                    }
+                }
+            }
+        }
         for (int y = 0; y < CHUNK_SIZE; y++)
         {
             for (int x = 0; x < CHUNK_SIZE; x++)
             {
-                if (useFalloffMapPerChunk && !useFalloffMapPer9Chunks)
-                {
-                    noiseMap[x, y] = noiseMap[x, y] * (1 - falloffMapPerChunk[x, y]);
-                }
-                if (useFalloffMapPer9Chunks && !useFalloffMapPerChunk)
-                {
-                    int modulus = 3;
-                    int chunkCoordInterval = 240;
-                    // Centre of the falloff
-                    if ((centre.x / chunkCoordInterval * infiniteTerrainScale) % modulus == 0 && (centre.y / chunkCoordInterval * infiniteTerrainScale) % modulus == 0)
-                    {
-                        noiseMap[x, y] = noiseMap[x, y];
-                    }
-                    // Right chunk
-                    else if (((centre.x / chunkCoordInterval * infiniteTerrainScale) % modulus == 1 && (centre.y / chunkCoordInterval * infiniteTerrainScale) % modulus == 0) || ((centre.x / chunkCoordInterval * infiniteTerrainScale) % modulus == -2 && (centre.y / chunkCoordInterval * infiniteTerrainScale) % modulus == 0))
-                    {
-                        noiseMap[x, y] = noiseMap[x, y] * (1 - falloffMap[(2 * CHUNK_SIZE) + x, CHUNK_SIZE + y]);
-                    }
-                    // Bottom right chunk
-                    else if (((centre.x / chunkCoordInterval * infiniteTerrainScale) % modulus == 1 && (centre.y / chunkCoordInterval * infiniteTerrainScale) % modulus == -1) || ((centre.x / chunkCoordInterval * infiniteTerrainScale) % modulus == -2 && (centre.y / chunkCoordInterval * infiniteTerrainScale) % modulus == 2) || ((centre.x / chunkCoordInterval * infiniteTerrainScale) % modulus == 1 && (centre.y / chunkCoordInterval * infiniteTerrainScale) % modulus == 2) || ((centre.x / chunkCoordInterval * infiniteTerrainScale) % modulus == -2 && (centre.y / chunkCoordInterval * infiniteTerrainScale) % modulus == -1))
-                    {
-                        noiseMap[x, y] = noiseMap[x, y] * (1 - falloffMap[(2 * CHUNK_SIZE) + x, (2 * CHUNK_SIZE) + y]);
-                    }
-                    // Bottom chunk
-                    else if (((centre.x / chunkCoordInterval * infiniteTerrainScale) % modulus == 0 && (centre.y / chunkCoordInterval * infiniteTerrainScale) % modulus == -1) || ((centre.x / chunkCoordInterval * infiniteTerrainScale) % modulus == 0 && (centre.y / chunkCoordInterval * infiniteTerrainScale) % modulus == 2))
-                    {
-                        noiseMap[x, y] = noiseMap[x, y] * (1 - falloffMap[CHUNK_SIZE + x, (2 * CHUNK_SIZE) + y]);
-                    }
-                    // Bottom left chunk
-                    else if (((centre.x / chunkCoordInterval * infiniteTerrainScale) % modulus == -1 && (centre.y / chunkCoordInterval * infiniteTerrainScale) % modulus == -1) || ((centre.x / chunkCoordInterval * infiniteTerrainScale) % modulus == -1 && (centre.y / chunkCoordInterval * infiniteTerrainScale) % modulus == 2) || ((centre.x / chunkCoordInterval * infiniteTerrainScale) % modulus == 2 && (centre.y / chunkCoordInterval * infiniteTerrainScale) % modulus == 2) || ((centre.x / chunkCoordInterval * infiniteTerrainScale) % modulus == 2 && (centre.y / chunkCoordInterval * infiniteTerrainScale) % modulus == -1))
-                    {
-                        noiseMap[x, y] = noiseMap[x, y] * (1 - falloffMap[x, (2 * CHUNK_SIZE) + y]);
-                    }
-                    // Left chunk
-                    else if (((centre.x / chunkCoordInterval * infiniteTerrainScale) % modulus == -1 && (centre.y / chunkCoordInterval * infiniteTerrainScale) % modulus == 0) || ((centre.x / chunkCoordInterval * infiniteTerrainScale) % modulus == 2 && (centre.y / chunkCoordInterval * infiniteTerrainScale) % modulus == 0))
-                    {
-                        noiseMap[x, y] = noiseMap[x, y] * (1 - falloffMap[x, CHUNK_SIZE + y]);
-                    }
-                    // Top left chunk
-                    else if (((centre.x / chunkCoordInterval * infiniteTerrainScale) % modulus == -1 && (centre.y / chunkCoordInterval * infiniteTerrainScale) % modulus == 1) || ((centre.x / chunkCoordInterval * infiniteTerrainScale) % modulus == 2 && (centre.y / chunkCoordInterval * infiniteTerrainScale) % modulus == 1) || ((centre.x / chunkCoordInterval * infiniteTerrainScale) % modulus == 2 && (centre.y / chunkCoordInterval * infiniteTerrainScale) % modulus == -2) || ((centre.x / chunkCoordInterval * infiniteTerrainScale) % modulus == -1 && (centre.y / chunkCoordInterval * infiniteTerrainScale) % modulus == -2))
-                    {
-                        noiseMap[x, y] = noiseMap[x, y] * (1 - falloffMap[x, y]);
-                    }
-                    // Top chunk
-                    else if (((centre.x / chunkCoordInterval * infiniteTerrainScale) % modulus == 0 && (centre.y / chunkCoordInterval * infiniteTerrainScale) % modulus == 1) || ((centre.x / chunkCoordInterval * infiniteTerrainScale) % modulus == 0 && (centre.y / chunkCoordInterval * infiniteTerrainScale) % modulus == -2))
-                    {
-                        noiseMap[x, y] = noiseMap[x, y] * (1 - falloffMap[CHUNK_SIZE + x, y]);
-                    }
-                    // Top right chunk
-                    else if (((centre.x / chunkCoordInterval * infiniteTerrainScale) % modulus == 1 && (centre.y / chunkCoordInterval * infiniteTerrainScale) % modulus == 1) || ((centre.x / chunkCoordInterval * infiniteTerrainScale) % modulus == -2 && (centre.y / chunkCoordInterval * infiniteTerrainScale) % modulus == 1) || ((centre.x / chunkCoordInterval * infiniteTerrainScale) % modulus == -2 && (centre.y / chunkCoordInterval * infiniteTerrainScale) % modulus == -2) || ((centre.x / chunkCoordInterval * infiniteTerrainScale) % modulus == 1 && (centre.y / chunkCoordInterval * infiniteTerrainScale) % modulus == -2))
-                    {
-                        noiseMap[x, y] = noiseMap[x, y] * (1 - falloffMap[(2 * CHUNK_SIZE) + x, y]);
-                    }
-                }
-
                 float currentHeight = noiseMap[x, y];
-                
+
                 for (int i = 0; i < regions.Length; i++)
                 {
                     if (currentHeight >= regions[i].height)
@@ -271,8 +279,8 @@ public class MapGenerator : MonoBehaviour
         }
         
         // Sometimes the game may not be being run so the Awake method wont be called
-        falloffMap = FalloffGenerator.GenerateFalloffMap(3 * CHUNK_SIZE, falloffSize, falloffDistToEdge);
-        falloffMapPerChunk = FalloffGenerator.GenerateFalloffMap(CHUNK_SIZE, falloffSize, falloffDistToEdge);
+        falloffMap = FalloffGenerator.GenerateFalloffMap(3 * (CHUNK_SIZE + 2), falloffSize, falloffDistToEdge);
+        falloffMapPerChunk = FalloffGenerator.GenerateFalloffMap(CHUNK_SIZE + 2, falloffSize, falloffDistToEdge);
     }
 
     // Struct is generic to handle both Map and Mesh data
