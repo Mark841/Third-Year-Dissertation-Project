@@ -71,7 +71,11 @@ public static class MeshGenerator
         }
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 
+=======
+        meshData.Finalise();
+>>>>>>> Stashed changes
 =======
         meshData.Finalise();
 >>>>>>> Stashed changes
@@ -100,6 +104,11 @@ public class MeshData
     bool usingFlatShading;
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+    bool usingFlatShading;
+
+>>>>>>> Stashed changes
 =======
     bool usingFlatShading;
 
@@ -272,6 +281,24 @@ public class MeshData
         uvs = flatShadedUVs;
     }
 
+    private void FlatShading()
+    {
+        Vector3[] flatShadedVertices = new Vector3[triangles.Length];
+        Vector2[] flatShadedUVs = new Vector2[triangles.Length];
+
+        for (int i = 0; i < triangles.Length; i++)
+        {
+            // Get vertex and uv from vertices array for current triangle
+            flatShadedVertices[i] = vertices[triangles[i]];
+            flatShadedUVs[i] = uvs[triangles[i]];
+            // Update triangles index to refer to index of flatshaded vertex and uvs
+            triangles[i] = i;
+        }
+
+        vertices = flatShadedVertices;
+        uvs = flatShadedUVs;
+    }
+
     public Mesh CreateMesh()
     {
         Mesh mesh = new Mesh();
@@ -280,8 +307,11 @@ public class MeshData
         mesh.uv = uvs;
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
         mesh.RecalculateNormals();
 =======
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
         if (usingFlatShading)
@@ -293,6 +323,9 @@ public class MeshData
             mesh.normals = bakedNormals;
         }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes

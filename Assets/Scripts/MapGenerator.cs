@@ -19,6 +19,9 @@ public class MapGenerator : MonoBehaviour
     public bool usingFlatShading;
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
@@ -55,7 +58,10 @@ public class MapGenerator : MonoBehaviour
     public TerrainType[] regions;
     static MapGenerator instance;
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 
     float[,] falloffMapPerChunk;
     float[,] falloffMap;
@@ -95,6 +101,9 @@ public class MapGenerator : MonoBehaviour
     }
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
@@ -117,8 +126,11 @@ public class MapGenerator : MonoBehaviour
         { // If the selected mode is to draw the terrain map, then display that
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             display.drawMesh(MeshGenerator.GenerateTerrainMesh(mapData.noiseMap, meshHeightMultiplier, meshHeightCurve, levelOfDetail), TextureGenerator.TextureFromColourMap(mapData.colourMap, CHUNK_SIZE, CHUNK_SIZE));
 =======
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
             display.drawMesh(MeshGenerator.GenerateTerrainMesh(mapData.noiseMap, meshHeightMultiplier, meshHeightCurve, editorLevelOfDetail, usingFlatShading), TextureGenerator.TextureFromColourMap(mapData.colourMap, CHUNK_SIZE, CHUNK_SIZE));
