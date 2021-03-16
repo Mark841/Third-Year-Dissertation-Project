@@ -4,7 +4,9 @@ using UnityEngine;
 
 public static class NoiseGenerator
 {
-    public static float[,] GenerateNoiseMap(int mapWidth, int mapHeight, int seed, float scale, int octaves, float persistence, float lacunarity, float DISTORT_STRENGTH, float roughness, Vector2 offset, Vector2 xWarpOffset, Vector2 yWarpOffset, bool normalise)
+    public enum NormaliseMode { Local, Global };
+
+    public static float[,] GenerateNoiseMap(int mapWidth, int mapHeight, int seed, float scale, int octaves, float persistence, float lacunarity, float DISTORT_STRENGTH, float roughness, Vector2 offset, Vector2 xWarpOffset, Vector2 yWarpOffset, bool normalise, NormaliseMode normaliseMode)
     {
         float[,] noiseMap = new float[mapWidth, mapHeight];
 
@@ -12,31 +14,38 @@ public static class NoiseGenerator
         System.Random prng = new System.Random(seed);
         Vector2[] octaveOffsets = new Vector2[octaves];
 
+        float maxPossHeight = 0;
+        float amplitude = 1;
+        float frequency = 1;
+
         // Offset the noise for that seed
         for (int i = 0; i < octaves; i++)
         {
             float offsetX = prng.Next(-100000, 100000) + offset.x;
-            float offsetY = prng.Next(-100000, 100000) + offset.y;
+            float offsetY = prng.Next(-100000, 100000) - offset.y;
             octaveOffsets[i] = new Vector2(offsetX, offsetY);
+
+            maxPossHeight += amplitude;
+            amplitude *= persistence;
         }
 
         // Variables to keep track of the maximum and minimum height of the mesh
-        float maxNoiseHeight = float.MinValue;
-        float minNoiseHeight = float.MaxValue;
+        float maxLocalNoiseHeight = float.MinValue;
+        float minLocalNoiseHeight = float.MaxValue;
 
         for (int y = 0; y < mapHeight; y++)
         {
             for (int x = 0; x < mapWidth; x++)
             {
-
-                float amplitude = 1;
-                float frequency = 1;
+                amplitude = 1;
+                frequency = 1;
                 float noiseHeight = 0;
 
                 for (int i = 0; i < octaves; i++)
                 {
-                    float xSample = (x - mapWidth) / scale * frequency + octaveOffsets[i].x;
-                    float ySample = (y - mapHeight) / scale * frequency + octaveOffsets[i].y;
+                    // Don't want the terrain to change when changing the offsets, just want it to move
+                    float xSample = (x - mapWidth + octaveOffsets[i].x) / scale * frequency;
+                    float ySample = (y - mapHeight + octaveOffsets[i].y) / scale * frequency;
 
                     float xWarping = DISTORT_STRENGTH * Mathf.PerlinNoise((xSample + xWarpOffset.x) * roughness, (ySample + xWarpOffset.y) * roughness);
                     float yWarping = DISTORT_STRENGTH * Mathf.PerlinNoise((xSample + yWarpOffset.x) * roughness, (ySample + yWarpOffset.y) * roughness);
@@ -48,15 +57,15 @@ public static class NoiseGenerator
                     frequency *= lacunarity;
                 }
 
-                if (noiseHeight > maxNoiseHeight)
+                if (noiseHeight > maxLocalNoiseHeight)
                 {
                     // Set the highest point of the terrain
-                    maxNoiseHeight = noiseHeight;
+                    maxLocalNoiseHeight = noiseHeight;
                 }
-                else if (noiseHeight < minNoiseHeight)
+                else if (noiseHeight < minLocalNoiseHeight)
                 {
                     // Set the lowest point of the terrain
-                    minNoiseHeight = noiseHeight;
+                    minLocalNoiseHeight = noiseHeight;
                 }
 
                 noiseMap[x, y] = noiseHeight;
@@ -70,8 +79,18 @@ public static class NoiseGenerator
             {
                 for (int x = 0; x < mapWidth; x++)
                 {
-                    // normalises the noise map using the highest and lowest heights of terrain
-                    noiseMap[x, y] = Mathf.InverseLerp(minNoiseHeight, maxNoiseHeight, noiseMap[x, y]);
+                    // If terrain is just on one chunk can do this
+                    if (NormaliseMode.Local == normaliseMode)
+                    {
+                        // normalises the noise map using the highest and lowest heights of terrain
+                        noiseMap[x, y] = Mathf.InverseLerp(minLocalNoiseHeight, maxLocalNoiseHeight, noiseMap[x, y]);
+                    }
+                    // If the terrain is endless don't want seams between chunks
+                    else
+                    {
+                        float normalisedHeight = (noiseMap[x, y] + 1) / (2.0f * maxPossHeight / 1.4f);
+                        noiseMap[x, y] = Mathf.Clamp(normalisedHeight, 0, int.MaxValue);
+                    }
                 }
             }
         }
