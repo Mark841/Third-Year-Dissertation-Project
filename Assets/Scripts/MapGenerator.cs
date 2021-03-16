@@ -18,6 +18,9 @@ public class MapGenerator : MonoBehaviour
 
     public bool usingFlatShading;
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     // The higher the level of detail goes the smaller the chunk size must be, 241 is largest it can be for LoD 6 if more LoD then chunk size must be decreased
     [Range(0, 6)]
@@ -51,6 +54,12 @@ public class MapGenerator : MonoBehaviour
 
     public TerrainType[] regions;
     static MapGenerator instance;
+<<<<<<< Updated upstream
+=======
+
+    float[,] falloffMapPerChunk;
+    float[,] falloffMap;
+>>>>>>> Stashed changes
 
     Queue<MapThreadInfo<MapData>> mapDataThreadInfoQueue = new Queue<MapThreadInfo<MapData>>();
     Queue<MapThreadInfo<MeshData>> meshDataThreadInfoQueue = new Queue<MapThreadInfo<MeshData>>();
@@ -85,6 +94,9 @@ public class MapGenerator : MonoBehaviour
         }
     }
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     public void DrawMapInEditor()
     {
@@ -104,8 +116,11 @@ public class MapGenerator : MonoBehaviour
         else if (drawMode == DrawMode.Mesh)
         { // If the selected mode is to draw the terrain map, then display that
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             display.drawMesh(MeshGenerator.GenerateTerrainMesh(mapData.noiseMap, meshHeightMultiplier, meshHeightCurve, levelOfDetail), TextureGenerator.TextureFromColourMap(mapData.colourMap, CHUNK_SIZE, CHUNK_SIZE));
 =======
+=======
+>>>>>>> Stashed changes
             display.drawMesh(MeshGenerator.GenerateTerrainMesh(mapData.noiseMap, meshHeightMultiplier, meshHeightCurve, editorLevelOfDetail, usingFlatShading), TextureGenerator.TextureFromColourMap(mapData.colourMap, CHUNK_SIZE, CHUNK_SIZE));
         }
         else if (drawMode == DrawMode.FalloffMap)
