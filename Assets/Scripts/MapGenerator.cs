@@ -10,8 +10,15 @@ public class MapGenerator : MonoBehaviour
     public enum DrawMode { NoiseMap, ColourMap, Mesh };
     public DrawMode drawMode;
 
+<<<<<<< Updated upstream
     // Must be 241 or below in size otherwise the LevelOfDetail functionality breaks as the list index goes out of bounds
     public const int CHUNK_SIZE = 241;
+=======
+    public NoiseGenerator.NormaliseMode normaliseMode;
+
+    public bool usingFlatShading;
+
+>>>>>>> Stashed changes
     // The higher the level of detail goes the smaller the chunk size must be, 241 is largest it can be for LoD 6 if more LoD then chunk size must be decreased
     [Range(0, 6)]
     public int levelOfDetail;
@@ -43,10 +50,42 @@ public class MapGenerator : MonoBehaviour
     public bool autoUpdate;
 
     public TerrainType[] regions;
+    static MapGenerator instance;
 
     Queue<MapThreadInfo<MapData>> mapDataThreadInfoQueue = new Queue<MapThreadInfo<MapData>>();
     Queue<MapThreadInfo<MeshData>> meshDataThreadInfoQueue = new Queue<MapThreadInfo<MeshData>>();
 
+<<<<<<< Updated upstream
+=======
+    private void Awake()
+    {
+        falloffMap = FalloffGenerator.GenerateFalloffMap(3 * (CHUNK_SIZE + 2), falloffSize, falloffDistToEdge);
+        falloffMapPerChunk = FalloffGenerator.GenerateFalloffMap(CHUNK_SIZE + 2, falloffSize, falloffDistToEdge);
+    }
+
+
+    // Set the chunk size of the map
+    public static int CHUNK_SIZE
+    {
+        get
+        {
+            if (instance == null)
+            {
+                instance = FindObjectOfType<MapGenerator>();
+            }
+            // Chose this number as divisible by all even numbers up to 12 so can have flexibility with LOD slider, has +1 added later which is why it doesnt look divisible at the moment
+            if (instance.usingFlatShading)
+            { // if using flatshading use a smaller chunksize, isn't divisible by 10 so cant use a LOD of 5
+                return 95;
+            }
+            else
+            {
+                return 239;
+            }
+        }
+    }
+
+>>>>>>> Stashed changes
     public void DrawMapInEditor()
     {
         // Make the noise and height maps
@@ -64,7 +103,22 @@ public class MapGenerator : MonoBehaviour
         }
         else if (drawMode == DrawMode.Mesh)
         { // If the selected mode is to draw the terrain map, then display that
+<<<<<<< Updated upstream
             display.drawMesh(MeshGenerator.GenerateTerrainMesh(mapData.noiseMap, meshHeightMultiplier, meshHeightCurve, levelOfDetail), TextureGenerator.TextureFromColourMap(mapData.colourMap, CHUNK_SIZE, CHUNK_SIZE));
+=======
+            display.drawMesh(MeshGenerator.GenerateTerrainMesh(mapData.noiseMap, meshHeightMultiplier, meshHeightCurve, editorLevelOfDetail, usingFlatShading), TextureGenerator.TextureFromColourMap(mapData.colourMap, CHUNK_SIZE, CHUNK_SIZE));
+        }
+        else if (drawMode == DrawMode.FalloffMap)
+        { // If the selected mode is to draw the falloff map, then display that
+            if (useFalloffMapPerChunk)
+            {
+                display.drawTexture(TextureGenerator.TextureFromHeightMap(FalloffGenerator.GenerateFalloffMap(CHUNK_SIZE + 2, falloffSize, falloffDistToEdge)));
+            }
+            else
+            {
+                display.drawTexture(TextureGenerator.TextureFromHeightMap(FalloffGenerator.GenerateFalloffMap(3 * (CHUNK_SIZE + 2), falloffSize, falloffDistToEdge)));
+            }
+>>>>>>> Stashed changes
         }
     }
 
@@ -121,7 +175,7 @@ public class MapGenerator : MonoBehaviour
     // This method will be run on different threads, it generates the terrain for each of the chunks for MapData type
     void MeshDataThread(MapData mapData, Action<MeshData> callback)
     {
-        MeshData meshData = MeshGenerator.GenerateTerrainMesh(mapData.noiseMap, meshHeightMultiplier, meshHeightCurve, levelOfDetail);
+        MeshData meshData = MeshGenerator.GenerateTerrainMesh(mapData.noiseMap, meshHeightMultiplier, meshHeightCurve, levelOfDetail, usingFlatShading);
 
         // Dont want the queue to be accessed at multiple times by mutliple threads so lock the queue until these lines have been run
         lock (meshDataThreadInfoQueue)
