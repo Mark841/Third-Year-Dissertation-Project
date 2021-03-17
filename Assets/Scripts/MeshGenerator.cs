@@ -6,22 +6,15 @@ public static class MeshGenerator
 {
     public static MeshData GenerateTerrainMesh(float[,] heightMap, float heightMultiplier, AnimationCurve heightCurvature, int levelOfDetail, bool usingFlatShading)
     {
-        // Have to create a new height curve object as otherwise because of threading multiple chunks it doesnt like to evaluate teh same object mutliple times and heavily distorts the chunks
+        // Have to create a new height curve object as otherwise because of threading multiple chunks it doesnt like to evaluate the same object multiple times and heavily distorts the chunks
         AnimationCurve heightCurve = new AnimationCurve(heightCurvature.keys);
-        int width = heightMap.GetLength(0);
-        int height = heightMap.GetLength(1);
-        float topLeftX = (width - 1) / -2.0f;
-        float topLeftZ = (height - 1) / 2.0f;
 
         int meshSimplificationIncrement = (levelOfDetail == 0) ? 1 : levelOfDetail * 2;
-        int verticesPerLine = (width - 1) / meshSimplificationIncrement + 1;
 
-        MeshData meshData = new MeshData(verticesPerLine, verticesPerLine);
-        int vertexIndex = 0;
+        int meshWithBorderSize = heightMap.GetLength(0);
+        int meshSize = meshWithBorderSize - (2 * meshSimplificationIncrement);
+        int meshSizeUnsimplified = meshWithBorderSize - 2;
 
-<<<<<<< Updated upstream
-        for (int y = 0; y < height; y += meshSimplificationIncrement)
-=======
         float topLeftX = (meshSizeUnsimplified - 1) / -2.0f;
         float topLeftZ = (meshSizeUnsimplified - 1) / 2.0f;
 
@@ -52,85 +45,51 @@ public static class MeshGenerator
         }
 
         for (int x = 0; x < meshWithBorderSize; x += meshSimplificationIncrement)
->>>>>>> Stashed changes
         {
-            for (int x = 0; x < width; x += meshSimplificationIncrement)
+            for (int y = 0; y < meshWithBorderSize; y += meshSimplificationIncrement)
             {
-                meshData.vertices[vertexIndex] = new Vector3(topLeftX + x, heightCurve.Evaluate(heightMap[x, y]) * heightMultiplier, topLeftZ - y);
-                meshData.uvs[vertexIndex] = new Vector2(x / (float) width, y / (float) height);
+                int vertexIndex = vertexIndicesMap[x, y];
+
+                // - meshSimplificationIncrement to make sure uvs are still properly centered
+                Vector2 percent = new Vector2((x - meshSimplificationIncrement) / (float)meshSize, (y - meshSimplificationIncrement) / (float)meshSize);
+                float height = heightCurve.Evaluate(heightMap[x, y]) * heightMultiplier;
+                Vector3 vertexPosition = new Vector3(topLeftX + (percent.x * meshSizeUnsimplified), height, topLeftZ - (percent.y * meshSizeUnsimplified));
+
+                meshData.AddVertex(vertexPosition, percent, vertexIndex);
 
                 // Ignore the right and bottom edge of the map
-                if ((x < width - 1) && (y < height - 1))
+                if ((x < meshWithBorderSize - 1) && (y < meshWithBorderSize - 1))
                 {
-                    meshData.AddTriangle(vertexIndex, (vertexIndex + verticesPerLine + 1), (vertexIndex + verticesPerLine));
-                    meshData.AddTriangle((vertexIndex + verticesPerLine + 1), vertexIndex, (vertexIndex + 1));
+                    int a = vertexIndicesMap[x, y];
+                    int b = vertexIndicesMap[x + meshSimplificationIncrement, y];
+                    int c = vertexIndicesMap[x, y + meshSimplificationIncrement];
+                    int d = vertexIndicesMap[x + meshSimplificationIncrement, y + meshSimplificationIncrement];
+                    meshData.AddTriangle(a, d, c);
+                    meshData.AddTriangle(d, a, b);
                 }
 
                 vertexIndex++;
             }
         }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-
-=======
         meshData.Finalise();
->>>>>>> Stashed changes
-=======
-        meshData.Finalise();
->>>>>>> Stashed changes
-=======
-        meshData.Finalise();
->>>>>>> Stashed changes
-=======
-        meshData.Finalise();
->>>>>>> Stashed changes
-=======
-        meshData.Finalise();
->>>>>>> Stashed changes
         return meshData;
     }
 }
 
 public class MeshData
 {
-    public Vector3[] vertices;
-    public int[] triangles;
-    public Vector2[] uvs;
+    Vector3[] vertices;
+    int[] triangles;
+    Vector2[] uvs;
+    Vector3[] bakedNormals;
 
-    int triangleIndex;
+    Vector3[] borderVertices;
+    int[] borderTriangles;
 
-<<<<<<< Updated upstream
-    public MeshData(int meshWidth, int meshHeight)
-    {
-        vertices = new Vector3[meshWidth * meshHeight];
-        uvs = new Vector2[meshWidth * meshHeight];
-        triangles = new int[(meshWidth - 1) * (meshHeight - 1) * 6];
-=======
+    int triIndex;
+    int borderTriIndex;
     bool usingFlatShading;
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-    bool usingFlatShading;
-
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
-    bool usingFlatShading;
-
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
-    bool usingFlatShading;
-
->>>>>>> Stashed changes
-=======
-    bool usingFlatShading;
-
->>>>>>> Stashed changes
     public MeshData(int verticesPerLine, bool usingFlatShading)
     {
         this.usingFlatShading = usingFlatShading;
@@ -157,17 +116,10 @@ public class MeshData
             vertices[vertexIndex] = vertexPos;
             uvs[vertexIndex] = verticesUV;
         }
->>>>>>> Stashed changes
     }
 
     public void AddTriangle(int a, int b, int c)
     {
-<<<<<<< Updated upstream
-        triangles[triangleIndex] = a;
-        triangles[triangleIndex + 1] = b;
-        triangles[triangleIndex + 2] = c;
-        triangleIndex += 3;
-=======
         if (a < 0 || b < 0 || c < 0)
         {
             borderTriangles[borderTriIndex] = a;
@@ -260,79 +212,6 @@ public class MeshData
     private void BakeNormals()
     {
         bakedNormals = CalculateNormals();
->>>>>>> Stashed changes
-    }
-
-    private void FlatShading()
-    {
-        Vector3[] flatShadedVertices = new Vector3[triangles.Length];
-        Vector2[] flatShadedUVs = new Vector2[triangles.Length];
-
-        for (int i = 0; i < triangles.Length; i++)
-        {
-            // Get vertex and uv from vertices array for current triangle
-            flatShadedVertices[i] = vertices[triangles[i]];
-            flatShadedUVs[i] = uvs[triangles[i]];
-            // Update triangles index to refer to index of flatshaded vertex and uvs
-            triangles[i] = i;
-        }
-
-        vertices = flatShadedVertices;
-        uvs = flatShadedUVs;
-    }
-
-    private void FlatShading()
-    {
-        Vector3[] flatShadedVertices = new Vector3[triangles.Length];
-        Vector2[] flatShadedUVs = new Vector2[triangles.Length];
-
-        for (int i = 0; i < triangles.Length; i++)
-        {
-            // Get vertex and uv from vertices array for current triangle
-            flatShadedVertices[i] = vertices[triangles[i]];
-            flatShadedUVs[i] = uvs[triangles[i]];
-            // Update triangles index to refer to index of flatshaded vertex and uvs
-            triangles[i] = i;
-        }
-
-        vertices = flatShadedVertices;
-        uvs = flatShadedUVs;
-    }
-
-    private void FlatShading()
-    {
-        Vector3[] flatShadedVertices = new Vector3[triangles.Length];
-        Vector2[] flatShadedUVs = new Vector2[triangles.Length];
-
-        for (int i = 0; i < triangles.Length; i++)
-        {
-            // Get vertex and uv from vertices array for current triangle
-            flatShadedVertices[i] = vertices[triangles[i]];
-            flatShadedUVs[i] = uvs[triangles[i]];
-            // Update triangles index to refer to index of flatshaded vertex and uvs
-            triangles[i] = i;
-        }
-
-        vertices = flatShadedVertices;
-        uvs = flatShadedUVs;
-    }
-
-    private void FlatShading()
-    {
-        Vector3[] flatShadedVertices = new Vector3[triangles.Length];
-        Vector2[] flatShadedUVs = new Vector2[triangles.Length];
-
-        for (int i = 0; i < triangles.Length; i++)
-        {
-            // Get vertex and uv from vertices array for current triangle
-            flatShadedVertices[i] = vertices[triangles[i]];
-            flatShadedUVs[i] = uvs[triangles[i]];
-            // Update triangles index to refer to index of flatshaded vertex and uvs
-            triangles[i] = i;
-        }
-
-        vertices = flatShadedVertices;
-        uvs = flatShadedUVs;
     }
 
     private void FlatShading()
@@ -359,21 +238,6 @@ public class MeshData
         mesh.vertices = vertices;
         mesh.triangles = triangles;
         mesh.uv = uvs;
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-        mesh.RecalculateNormals();
-=======
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
         if (usingFlatShading)
         {
             mesh.RecalculateNormals();
@@ -382,19 +246,6 @@ public class MeshData
         {
             mesh.normals = bakedNormals;
         }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
         return mesh;
     }
 }
