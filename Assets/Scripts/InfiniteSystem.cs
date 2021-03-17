@@ -4,8 +4,6 @@ using UnityEngine;
 
 public class InfiniteSystem : MonoBehaviour
 {
-    const float scale = MapGenerator.infiniteTerrainScale;
-
     const float VIEWER_MOVE_THRESHOLD_FOR_CHUNK_UPDATE = 25.0f;
     const float SQUARE_VIEWER_MOVE_THRESHOLD_FOR_CHUNK_UPDATE = VIEWER_MOVE_THRESHOLD_FOR_CHUNK_UPDATE * VIEWER_MOVE_THRESHOLD_FOR_CHUNK_UPDATE;
     Vector2 viewerPosOld;
@@ -28,7 +26,7 @@ public class InfiniteSystem : MonoBehaviour
     {
         mapGenerator = FindObjectOfType<MapGenerator>();
         maxViewDist = detailLevels[detailLevels.Length - 1].viewerDistThreshold;
-        chunkSize = MapGenerator.CHUNK_SIZE - 1;
+        chunkSize = mapGenerator.CHUNK_SIZE - 1;
         chunkVisibleInViewDist = Mathf.RoundToInt(maxViewDist / chunkSize);
         // On start load update teh chunks as it won't go through the if statement in the Update method on the start of the run
         UpdateVisibleChunks();
@@ -37,9 +35,9 @@ public class InfiniteSystem : MonoBehaviour
     // Method called on each frame
     private void Update()
     {
-        viewerPos = new Vector2(viewer.position.x, viewer.position.z) / scale;
+        viewerPos = new Vector2(viewer.position.x, viewer.position.z) / mapGenerator.terrainData.infiniteTerrainScale;
 
-        // This if statement makes it so the chunks dont updsate every frame but only when the vieweer has moved past a certain threshold amount
+        // This if statement makes it so the chunks dont update every frame but only when the viewer has moved past a certain threshold amount
         // To have it update the chunks every frame remove the if and just have the "UpdateVisibleChunks();" line
         if ((viewerPosOld - viewerPos).sqrMagnitude > SQUARE_VIEWER_MOVE_THRESHOLD_FOR_CHUNK_UPDATE)
         {
@@ -118,11 +116,11 @@ public class InfiniteSystem : MonoBehaviour
             meshFilter = meshObject.AddComponent<MeshFilter>();
             meshCollider = meshObject.AddComponent<MeshCollider>();
             // Set the position of the chunk in the game world
-            meshObject.transform.position = posInWorld * scale;
+            meshObject.transform.position = posInWorld * mapGenerator.terrainData.infiniteTerrainScale;
             // Attach the chunk to the parent object (MapGenerator in Unity) so it doesnt fill up the heirarchy
             meshObject.transform.parent = parent;
             // Set the scale of the chunk
-            meshObject.transform.localScale = Vector3.one * scale;
+            meshObject.transform.localScale = Vector3.one * mapGenerator.terrainData.infiniteTerrainScale;
             // Make the chunk invisible
             SetVisible(false);
 
@@ -149,10 +147,6 @@ public class InfiniteSystem : MonoBehaviour
             this.mapData = mapData;
             mapDataReceived = true;
             
-            // Set the texture of the mesh to be the colour map
-            Texture2D texture = TextureGenerator.TextureFromColourMap(mapData.colourMap, MapGenerator.CHUNK_SIZE, MapGenerator.CHUNK_SIZE);
-            meshRenderer.material.mainTexture = texture;
-
             UpdateTerrainChunk();
         }
 

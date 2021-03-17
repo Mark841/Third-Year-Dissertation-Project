@@ -67,8 +67,6 @@ public static class MeshGenerator
                     meshData.AddTriangle(a, d, c);
                     meshData.AddTriangle(d, a, b);
                 }
-
-                vertexIndex++;
             }
         }
         meshData.Finalise();
@@ -88,6 +86,7 @@ public class MeshData
 
     int triIndex;
     int borderTriIndex;
+
     bool usingFlatShading;
 
     public MeshData(int verticesPerLine, bool usingFlatShading)

@@ -6,7 +6,7 @@ public static class NoiseGenerator
 {
     public enum NormaliseMode { Local, Global };
 
-    public static float[,] GenerateNoiseMap(int mapWidth, int mapHeight, int seed, float scale, int octaves, float persistence, float lacunarity, float DISTORT_STRENGTH, float roughness, Vector2 offset, Vector2 xWarpOffset, Vector2 yWarpOffset, bool normalise, NormaliseMode normaliseMode)
+    public static float[,] GenerateNoiseMap(int mapWidth, int mapHeight, int seed, float scale, int octaves, float persistence, float lacunarity, float distortStrength, float roughness, Vector2 offset, Vector2 xWarpOffset, Vector2 yWarpOffset, bool normalise, NormaliseMode normaliseMode)
     {
         float[,] noiseMap = new float[mapWidth, mapHeight];
 
@@ -47,8 +47,8 @@ public static class NoiseGenerator
                     float xSample = (x - mapWidth + octaveOffsets[i].x) / scale * frequency;
                     float ySample = (y - mapHeight + octaveOffsets[i].y) / scale * frequency;
 
-                    float xWarping = DISTORT_STRENGTH * Mathf.PerlinNoise((xSample + xWarpOffset.x) * roughness, (ySample + xWarpOffset.y) * roughness);
-                    float yWarping = DISTORT_STRENGTH * Mathf.PerlinNoise((xSample + yWarpOffset.x) * roughness, (ySample + yWarpOffset.y) * roughness);
+                    float xWarping = distortStrength * Mathf.PerlinNoise((xSample + xWarpOffset.x) * roughness, (ySample + xWarpOffset.y) * roughness);
+                    float yWarping = distortStrength * Mathf.PerlinNoise((xSample + yWarpOffset.x) * roughness, (ySample + yWarpOffset.y) * roughness);
 
                     float noiseValue = Mathf.PerlinNoise(xSample + xWarping, ySample + yWarping) * 2 - 1;
                     noiseHeight += (noiseValue * amplitude);
