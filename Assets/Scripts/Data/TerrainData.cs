@@ -25,4 +25,20 @@ public class TerrainData : UpdatableData
     // Variable to use in the falloff maps equation to control how strong a falloff to have
     [Range(1.0f, 10.0f)]
     public float falloffDistToEdge = 2.2f;
+
+    public float minMeshHeight
+    {
+        get
+        {
+            return infiniteTerrainScale * meshHeightMultiplier * meshHeightCurve.Evaluate(0);
+        }
+    }
+    public float maxMeshHeight
+    {
+        get
+        {
+            return infiniteTerrainScale * meshHeightMultiplier * meshHeightCurve.Evaluate(1);
+        }
+    }
+
 }
