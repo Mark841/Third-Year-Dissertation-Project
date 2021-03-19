@@ -28,6 +28,10 @@ public class NoiseData : UpdatableData
     // Normalise affects whether the nosie will be normalised or not
     public bool normalise;
 
+
+    // Only compile the following code if its inside the untiy editor
+    #if UNITY_EDITOR
+
     protected override void OnValidate()
     {
         if (noiseScale < 10)
@@ -49,4 +53,5 @@ public class NoiseData : UpdatableData
 
         base.OnValidate();
     }
+    #endif
 }

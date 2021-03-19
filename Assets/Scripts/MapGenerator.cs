@@ -29,6 +29,12 @@ public class MapGenerator : MonoBehaviour
     Queue<MapThreadInfo<MapData>> mapDataThreadInfoQueue = new Queue<MapThreadInfo<MapData>>();
     Queue<MapThreadInfo<MeshData>> meshDataThreadInfoQueue = new Queue<MapThreadInfo<MeshData>>();
 
+    private void Awake()
+    {
+        textureData.ApplyToMaterial(terrainMaterial);
+        // Should be called here because of the effect of calling it on seperate threads so should be done before
+        textureData.UpdateMeshHeights(terrainMaterial, terrainData.minMeshHeight, terrainData.maxMeshHeight);
+    }
 
     void OnValuesUpdated()
     {
@@ -62,6 +68,8 @@ public class MapGenerator : MonoBehaviour
 
     public void DrawMapInEditor()
     {
+
+        textureData.UpdateMeshHeights(terrainMaterial, terrainData.minMeshHeight, terrainData.maxMeshHeight);
         // Make the noise and height maps
         MapData mapData = GenerateMapData(Vector2.zero);
         // Find the object in unity that is using the MapDisplay script
@@ -164,8 +172,6 @@ public class MapGenerator : MonoBehaviour
                 }
             }
         }
-
-        textureData.UpdateMeshHeights(terrainMaterial, terrainData.minMeshHeight, terrainData.maxMeshHeight);
 
         return new MapData(noiseMap);
     }
