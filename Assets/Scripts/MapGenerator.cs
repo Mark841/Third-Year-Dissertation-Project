@@ -16,8 +16,13 @@ public class MapGenerator : MonoBehaviour
 
     public Material terrainMaterial;
 
+    [Range(0, MeshGenerator.numSupportedChunkSizes - 1)]
+    public int chunkSizeIndex;
+    [Range(0, MeshGenerator.numSupportedFlatShadedChunkSizes - 1)]
+    public int flatShadedChunkSizeIndex;
+
     // The higher the level of detail goes the smaller the chunk size must be, 241 is largest it can be for LoD 6 if more LoD then chunk size must be decreased
-    [Range(0, 6)]
+    [Range(0, MeshGenerator.numOfSupportedLevelsOfDetail - 1)]
     public int editorLevelOfDetail;
 
     // This determines if the terrain will update when a value is changed or only when the update button is pressed
@@ -54,14 +59,14 @@ public class MapGenerator : MonoBehaviour
     {
         get
         {
-            // Chose this number as divisible by all even numbers up to 12 so can have flexibility with LOD slider, has +1 added later which is why it doesnt look divisible at the moment
+            // Chose this number as divisible by all even numbers up to 8 so can have flexibility with LOD slider, -1 because of the chunk size borders
             if (terrainData.usingFlatShading)
-            { // if using flatshading use a smaller chunksize, isn't divisible by 10 so cant use a LOD of 5
-                return 95;
+            { // if using flatshading use a smaller chunksize because of the increased number of vertices
+                return MeshGenerator.supportedFlatShadedChunkSizes[flatShadedChunkSizeIndex] - 1;
             }
             else
-            {
-                return 239;
+            { // Number can't be too large as then would exceed maximum number of vertices for a mesh
+                return MeshGenerator.supportedChunkSizes[chunkSizeIndex] - 1;
             }
         }
     }

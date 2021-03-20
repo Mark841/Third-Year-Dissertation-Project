@@ -23,7 +23,7 @@ public class InfiniteSystem : MonoBehaviour
     int chunkVisibleInViewDist;
 
     Dictionary<Vector2, TerrainChunk> terrainChunkDict = new Dictionary<Vector2, TerrainChunk>();
-    static List<TerrainChunk> terrainChunksVisibleLastUpdate = new List<TerrainChunk>();
+    static List<TerrainChunk> visibleTerrainChunks = new List<TerrainChunk>();
 
     private void Start()
     {
@@ -43,7 +43,7 @@ public class InfiniteSystem : MonoBehaviour
         // Call every frame so long as the viewer has moved
         if (viewerPos != viewerPosOld)
         {
-            foreach (TerrainChunk chunk in terrainChunksVisibleLastUpdate)
+            foreach (TerrainChunk chunk in visibleTerrainChunks)
             {
                 chunk.UpdateCollisionMesh();
             }
@@ -60,13 +60,13 @@ public class InfiniteSystem : MonoBehaviour
 
     public void UpdateVisibleChunks()
     {
-        // Go through all chunks that were visible last update and make them invisible
-        for (int i = 0; i < terrainChunksVisibleLastUpdate.Count; i++)
+        HashSet<Vector2> alreadyUpdatedChunkCoords = new HashSet<Vector2>();
+        // Go through all chunks that were visible and update them which will either make them visible or invisible
+        for (int i = visibleTerrainChunks.Count - 1; i >= 0; i--)
         {
-            terrainChunksVisibleLastUpdate[i].SetVisible(false);
+            alreadyUpdatedChunkCoords.Add(visibleTerrainChunks[i].coord);
+            visibleTerrainChunks[i].UpdateTerrainChunk();
         }
-        // Empty the list to remove all chunks in it, so no chunks should be visible at this point in time
-        terrainChunksVisibleLastUpdate.Clear();
 
         // Make an easy to read grid for the chunk coordinates so they go up in 1's not 240's (as thats the chunk size)
         int currentChunkCoordX = Mathf.RoundToInt(viewerPos.x / chunkSize);
@@ -79,13 +79,17 @@ public class InfiniteSystem : MonoBehaviour
             {
                 Vector2 viewedChunkCoord = new Vector2(currentChunkCoordX + xOffset, currentChunkCoordY + yOffset);
 
-                if (terrainChunkDict.ContainsKey(viewedChunkCoord))
-                { // If the chunk already exists in the key, update that chunk
-                    terrainChunkDict[viewedChunkCoord].UpdateTerrainChunk();
-                }
-                else
-                { // If the chunk doesn't exist yet add it to the dictionary
-                    terrainChunkDict.Add(viewedChunkCoord, new TerrainChunk(viewedChunkCoord, chunkSize, detailLevels, colliderLevelOfDetailIndex, transform, mapMaterial));
+                // If the chunk hasn't already been updated at the start of the method
+                if (!alreadyUpdatedChunkCoords.Contains(viewedChunkCoord))
+                {
+                    if (terrainChunkDict.ContainsKey(viewedChunkCoord))
+                    { // If the chunk already exists in the key, update that chunk
+                        terrainChunkDict[viewedChunkCoord].UpdateTerrainChunk();
+                    }
+                    else
+                    { // If the chunk doesn't exist yet add it to the dictionary
+                        terrainChunkDict.Add(viewedChunkCoord, new TerrainChunk(viewedChunkCoord, chunkSize, detailLevels, colliderLevelOfDetailIndex, transform, mapMaterial));
+                    }
                 }
             }
         }
@@ -94,6 +98,8 @@ public class InfiniteSystem : MonoBehaviour
     // This class represents each terrain chunk object
     public class TerrainChunk
     {
+        public Vector2 coord;
+
         GameObject meshObject;
         Vector2 pos;
         Bounds bounds;
@@ -116,6 +122,7 @@ public class InfiniteSystem : MonoBehaviour
 
         public TerrainChunk(Vector2 coord, int size, levelOfDetailInfo[] detailLevels, int colliderLevelOfDetailIndex, Transform parent, Material mapMaterial)
         {
+            this.coord = coord;
             this.detailLevels = detailLevels;
             this.colliderLevelOfDetailIndex = colliderLevelOfDetailIndex;
 
@@ -170,6 +177,8 @@ public class InfiniteSystem : MonoBehaviour
             if (mapDataReceived)
             {
                 float viewDistFromClosestEdge = Mathf.Sqrt(bounds.SqrDistance(viewerPos));
+
+                bool wasVisible = IsVisible();
                 bool visible = (viewDistFromClosestEdge <= maxViewDist);
 
                 if (visible)
@@ -203,7 +212,19 @@ public class InfiniteSystem : MonoBehaviour
                     }
 
                     // Update the chunks visible last update list here to avoid having some chunks stay visible even if they aren't near the viewer
-                    terrainChunksVisibleLastUpdate.Add(this);
+                    visibleTerrainChunks.Add(this);
+                }
+
+                if (wasVisible != visible)
+                {
+                    if (visible)
+                    {
+                        visibleTerrainChunks.Add(this);
+                    }
+                    else
+                    {
+                        visibleTerrainChunks.Remove(this);
+                    }
                 }
 
                 SetVisible(visible);
@@ -285,10 +306,10 @@ public class InfiniteSystem : MonoBehaviour
     [System.Serializable]
     public struct levelOfDetailInfo
     {
+        [Range(0, MeshGenerator.numOfSupportedLevelsOfDetail - 1)]
         public int levelOfDetail;
         // If the viewer is outside of this threshold decrease the level of detail
         public float viewerDistThreshold;
-        public bool useForColliderMesh;
 
         public float sqrVisibleDistanceThreshold
         {
