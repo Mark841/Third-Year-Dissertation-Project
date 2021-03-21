@@ -10,35 +10,28 @@ public class MapGenerator : MonoBehaviour
     public enum DrawMode { NoiseMap, Mesh, FalloffMap };
     public DrawMode drawMode;
 
-    public TerrainData terrainData;
-    public NoiseData noiseData;
+    public MeshSettings meshSettings;
+    public HeightMapSettings heightMapSettings;
     public TextureData textureData;
 
     public Material terrainMaterial;
 
-    [Range(0, MeshGenerator.numSupportedChunkSizes - 1)]
-    public int chunkSizeIndex;
-    [Range(0, MeshGenerator.numSupportedFlatShadedChunkSizes - 1)]
-    public int flatShadedChunkSizeIndex;
 
     // The higher the level of detail goes the smaller the chunk size must be, 241 is largest it can be for LoD 6 if more LoD then chunk size must be decreased
-    [Range(0, MeshGenerator.numOfSupportedLevelsOfDetail - 1)]
+    [Range(0, MeshSettings.numOfSupportedLevelsOfDetail - 1)]
     public int editorLevelOfDetail;
 
     // This determines if the terrain will update when a value is changed or only when the update button is pressed
     public bool autoUpdate;
 
-    float[,] falloffMapPerChunk;
-    float[,] falloffMap;
-
-    Queue<MapThreadInfo<MapData>> mapDataThreadInfoQueue = new Queue<MapThreadInfo<MapData>>();
+    Queue<MapThreadInfo<HeightMap>> heightMapThreadInfoQueue = new Queue<MapThreadInfo<HeightMap>>();
     Queue<MapThreadInfo<MeshData>> meshDataThreadInfoQueue = new Queue<MapThreadInfo<MeshData>>();
 
-    private void Awake()
+    private void Start()
     {
         textureData.ApplyToMaterial(terrainMaterial);
         // Should be called here because of the effect of calling it on seperate threads so should be done before
-        textureData.UpdateMeshHeights(terrainMaterial, terrainData.minMeshHeight, terrainData.maxMeshHeight);
+        textureData.UpdateMeshHeights(terrainMaterial, heightMapSettings.minMeshHeight, heightMapSettings.maxMeshHeight);
     }
 
     void OnValuesUpdated()
@@ -54,162 +47,66 @@ public class MapGenerator : MonoBehaviour
         textureData.ApplyToMaterial(terrainMaterial);
     }
 
-    // Set the chunk size of the map
-    public int CHUNK_SIZE
-    {
-        get
-        {
-            // Chose this number as divisible by all even numbers up to 8 so can have flexibility with LOD slider, -1 because of the chunk size borders
-            if (terrainData.usingFlatShading)
-            { // if using flatshading use a smaller chunksize because of the increased number of vertices
-                return MeshGenerator.supportedFlatShadedChunkSizes[flatShadedChunkSizeIndex] - 1;
-            }
-            else
-            { // Number can't be too large as then would exceed maximum number of vertices for a mesh
-                return MeshGenerator.supportedChunkSizes[chunkSizeIndex] - 1;
-            }
-        }
-    }
 
     public void DrawMapInEditor()
     {
 
-        textureData.UpdateMeshHeights(terrainMaterial, terrainData.minMeshHeight, terrainData.maxMeshHeight);
+        textureData.UpdateMeshHeights(terrainMaterial, heightMapSettings.minMeshHeight, heightMapSettings.maxMeshHeight);
         // Make the noise and height maps
-        MapData mapData = GenerateMapData(Vector2.zero);
+        HeightMap heightMap = HeightMapGenerator.GenerateHeightMap(meshSettings.CHUNK_SIZE, heightMapSettings, Vector2.zero, meshSettings);
         // Find the object in unity that is using the MapDisplay script
         MapDisplay display = FindObjectOfType<MapDisplay>();
 
         if (drawMode == DrawMode.NoiseMap)
         { // If the selected mode is to draw the noise map, then display that
-            display.drawTexture(TextureGenerator.TextureFromHeightMap(mapData.noiseMap));
+            display.drawTexture(TextureGenerator.TextureFromHeightMap(heightMap.noiseMap));
         }
         else if (drawMode == DrawMode.Mesh)
         { // If the selected mode is to draw the terrain map, then display that
-            display.drawMesh(MeshGenerator.GenerateTerrainMesh(mapData.noiseMap, terrainData.meshHeightMultiplier, terrainData.meshHeightCurve, editorLevelOfDetail, terrainData.usingFlatShading));
+            display.drawMesh(MeshGenerator.GenerateTerrainMesh(heightMap.noiseMap, meshSettings, editorLevelOfDetail));
         }
         else if (drawMode == DrawMode.FalloffMap)
         { // If the selected mode is to draw the falloff map, then display that
-            if (terrainData.useFalloffMapPerChunk)
+            if (heightMapSettings.useFalloffMapPerChunk)
             {
-                display.drawTexture(TextureGenerator.TextureFromHeightMap(FalloffGenerator.GenerateFalloffMap(CHUNK_SIZE + 2, terrainData.falloffSize, terrainData.falloffDistToEdge)));
+                display.drawTexture(TextureGenerator.TextureFromHeightMap(FalloffGenerator.GenerateFalloffMap(meshSettings.CHUNK_SIZE, heightMapSettings.falloffSize, heightMapSettings.falloffDistToEdge)));
             }
             else
             {
-                display.drawTexture(TextureGenerator.TextureFromHeightMap(FalloffGenerator.GenerateFalloffMap(3 * (CHUNK_SIZE + 2), terrainData.falloffSize, terrainData.falloffDistToEdge)));
+                display.drawTexture(TextureGenerator.TextureFromHeightMap(FalloffGenerator.GenerateFalloffMap(3 * (meshSettings.CHUNK_SIZE), heightMapSettings.falloffSize, heightMapSettings.falloffDistToEdge)));
             }
         }
     }
 
-    MapData GenerateMapData(Vector2 centre)
+    // This method starts other threads for HeightMap type
+    public void RequestHeightMap(Vector2 centre, Action<HeightMap> callback)
     {
-        float[,] noiseMap = NoiseGenerator.GenerateNoiseMap(CHUNK_SIZE + 2, CHUNK_SIZE + 2, noiseData.seed, noiseData.noiseScale, noiseData.octaves, noiseData.persistence, noiseData.lacunarity, noiseData.distortStrength, noiseData.roughness, centre + noiseData.offset, noiseData.xWarpOffset, noiseData.yWarpOffset, noiseData.normalise, noiseData.normaliseMode);
-
-        if (falloffMap == null)
-        {
-            falloffMap = FalloffGenerator.GenerateFalloffMap(3 * (CHUNK_SIZE + 2), terrainData.falloffSize, terrainData.falloffDistToEdge);
-        }
-        if (falloffMapPerChunk == null)
-        {
-            falloffMapPerChunk = FalloffGenerator.GenerateFalloffMap(CHUNK_SIZE + 2, terrainData.falloffSize, terrainData.falloffDistToEdge);
-        }
-
-        if (terrainData.useFalloffMapPerChunk || terrainData.useFalloffMapPer9Chunks)
-        {
-            for (int y = 0; y < CHUNK_SIZE + 2; y++)
-            {
-                for (int x = 0; x < CHUNK_SIZE + 2; x++)
-                {
-                    if (terrainData.useFalloffMapPerChunk && !terrainData.useFalloffMapPer9Chunks)
-                    {
-                        noiseMap[x, y] = noiseMap[x, y] * (1 - falloffMapPerChunk[x, y]);
-                    }
-                    if (terrainData.useFalloffMapPer9Chunks && !terrainData.useFalloffMapPerChunk)
-                    {
-                        int modulus = 3;
-                        int chunkCoordInterval = 238;
-                        // Centre of the falloff
-                        if ((centre.x / chunkCoordInterval * terrainData.infiniteTerrainScale) % modulus == 0 && (centre.y / chunkCoordInterval * terrainData.infiniteTerrainScale) % modulus == 0)
-                        {
-                            noiseMap[x, y] = noiseMap[x, y];
-                        }
-                        // Right chunk
-                        else if (((centre.x / chunkCoordInterval * terrainData.infiniteTerrainScale) % modulus == 1 && (centre.y / chunkCoordInterval * terrainData.infiniteTerrainScale) % modulus == 0) || ((centre.x / chunkCoordInterval * terrainData.infiniteTerrainScale) % modulus == -2 && (centre.y / chunkCoordInterval * terrainData.infiniteTerrainScale) % modulus == 0))
-                        {
-                            noiseMap[x, y] = noiseMap[x, y] * (1 - falloffMap[(2 * CHUNK_SIZE) + x, CHUNK_SIZE + y]);
-                        }
-                        // Bottom right chunk
-                        else if (((centre.x / chunkCoordInterval * terrainData.infiniteTerrainScale) % modulus == 1 && (centre.y / chunkCoordInterval * terrainData.infiniteTerrainScale) % modulus == -1) || ((centre.x / chunkCoordInterval * terrainData.infiniteTerrainScale) % modulus == -2 && (centre.y / chunkCoordInterval * terrainData.infiniteTerrainScale) % modulus == 2) || ((centre.x / chunkCoordInterval * terrainData.infiniteTerrainScale) % modulus == 1 && (centre.y / chunkCoordInterval * terrainData.infiniteTerrainScale) % modulus == 2) || ((centre.x / chunkCoordInterval * terrainData.infiniteTerrainScale) % modulus == -2 && (centre.y / chunkCoordInterval * terrainData.infiniteTerrainScale) % modulus == -1))
-                        {
-                            noiseMap[x, y] = noiseMap[x, y] * (1 - falloffMap[(2 * CHUNK_SIZE) + x, (2 * CHUNK_SIZE) + y]);
-                        }
-                        // Bottom chunk
-                        else if (((centre.x / chunkCoordInterval * terrainData.infiniteTerrainScale) % modulus == 0 && (centre.y / chunkCoordInterval * terrainData.infiniteTerrainScale) % modulus == -1) || ((centre.x / chunkCoordInterval * terrainData.infiniteTerrainScale) % modulus == 0 && (centre.y / chunkCoordInterval * terrainData.infiniteTerrainScale) % modulus == 2))
-                        {
-                            noiseMap[x, y] = noiseMap[x, y] * (1 - falloffMap[CHUNK_SIZE + x, (2 * CHUNK_SIZE) + y]);
-                        }
-                        // Bottom left chunk
-                        else if (((centre.x / chunkCoordInterval * terrainData.infiniteTerrainScale) % modulus == -1 && (centre.y / chunkCoordInterval * terrainData.infiniteTerrainScale) % modulus == -1) || ((centre.x / chunkCoordInterval * terrainData.infiniteTerrainScale) % modulus == -1 && (centre.y / chunkCoordInterval * terrainData.infiniteTerrainScale) % modulus == 2) || ((centre.x / chunkCoordInterval * terrainData.infiniteTerrainScale) % modulus == 2 && (centre.y / chunkCoordInterval * terrainData.infiniteTerrainScale) % modulus == 2) || ((centre.x / chunkCoordInterval * terrainData.infiniteTerrainScale) % modulus == 2 && (centre.y / chunkCoordInterval * terrainData.infiniteTerrainScale) % modulus == -1))
-                        {
-                            noiseMap[x, y] = noiseMap[x, y] * (1 - falloffMap[x, (2 * CHUNK_SIZE) + y]);
-                        }
-                        // Left chunk
-                        else if (((centre.x / chunkCoordInterval * terrainData.infiniteTerrainScale) % modulus == -1 && (centre.y / chunkCoordInterval * terrainData.infiniteTerrainScale) % modulus == 0) || ((centre.x / chunkCoordInterval * terrainData.infiniteTerrainScale) % modulus == 2 && (centre.y / chunkCoordInterval * terrainData.infiniteTerrainScale) % modulus == 0))
-                        {
-                            noiseMap[x, y] = noiseMap[x, y] * (1 - falloffMap[x, CHUNK_SIZE + y]);
-                        }
-                        // Top left chunk
-                        else if (((centre.x / chunkCoordInterval * terrainData.infiniteTerrainScale) % modulus == -1 && (centre.y / chunkCoordInterval * terrainData.infiniteTerrainScale) % modulus == 1) || ((centre.x / chunkCoordInterval * terrainData.infiniteTerrainScale) % modulus == 2 && (centre.y / chunkCoordInterval * terrainData.infiniteTerrainScale) % modulus == 1) || ((centre.x / chunkCoordInterval * terrainData.infiniteTerrainScale) % modulus == 2 && (centre.y / chunkCoordInterval * terrainData.infiniteTerrainScale) % modulus == -2) || ((centre.x / chunkCoordInterval * terrainData.infiniteTerrainScale) % modulus == -1 && (centre.y / chunkCoordInterval * terrainData.infiniteTerrainScale) % modulus == -2))
-                        {
-                            noiseMap[x, y] = noiseMap[x, y] * (1 - falloffMap[x, y]);
-                        }
-                        // Top chunk
-                        else if (((centre.x / chunkCoordInterval * terrainData.infiniteTerrainScale) % modulus == 0 && (centre.y / chunkCoordInterval * terrainData.infiniteTerrainScale) % modulus == 1) || ((centre.x / chunkCoordInterval * terrainData.infiniteTerrainScale) % modulus == 0 && (centre.y / chunkCoordInterval * terrainData.infiniteTerrainScale) % modulus == -2))
-                        {
-                            noiseMap[x, y] = noiseMap[x, y] * (1 - falloffMap[CHUNK_SIZE + x, y]);
-                        }
-                        // Top right chunk
-                        else if (((centre.x / chunkCoordInterval * terrainData.infiniteTerrainScale) % modulus == 1 && (centre.y / chunkCoordInterval * terrainData.infiniteTerrainScale) % modulus == 1) || ((centre.x / chunkCoordInterval * terrainData.infiniteTerrainScale) % modulus == -2 && (centre.y / chunkCoordInterval * terrainData.infiniteTerrainScale) % modulus == 1) || ((centre.x / chunkCoordInterval * terrainData.infiniteTerrainScale) % modulus == -2 && (centre.y / chunkCoordInterval * terrainData.infiniteTerrainScale) % modulus == -2) || ((centre.x / chunkCoordInterval * terrainData.infiniteTerrainScale) % modulus == 1 && (centre.y / chunkCoordInterval * terrainData.infiniteTerrainScale) % modulus == -2))
-                        {
-                            noiseMap[x, y] = noiseMap[x, y] * (1 - falloffMap[(2 * CHUNK_SIZE) + x, y]);
-                        }
-                    }
-                }
-            }
-        }
-
-        return new MapData(noiseMap);
-    }
-
-    // This method starts other threads for MapData type
-    public void RequestMapData(Vector2 centre, Action<MapData> callback)
-    {
-        ThreadStart threadStart = delegate { MapDataThread(centre, callback); };
+        ThreadStart threadStart = delegate { HeightMapThread(centre, callback); };
         new Thread(threadStart).Start();
     }
-    // This method will be run on different threads, it generates the terrain for each of the chunks for MapData type
-    void MapDataThread(Vector2 centre, Action<MapData> callback)
+    // This method will be run on different threads, it generates the terrain for each of the chunks for HeightMap type
+    void HeightMapThread(Vector2 centre, Action<HeightMap> callback)
     {
-        MapData mapData = GenerateMapData(centre);
+        HeightMap heightMap = HeightMapGenerator.GenerateHeightMap(meshSettings.CHUNK_SIZE, heightMapSettings, centre, meshSettings);
 
         // Dont want the queue to be accessed at multiple times by mutliple threads so lock the queue until these lines have been run
-        lock (mapDataThreadInfoQueue)
+        lock (heightMapThreadInfoQueue)
         {
             // Add the chunk to be processed onto a queue as only the main unity thread can process mesh info
-            mapDataThreadInfoQueue.Enqueue(new MapThreadInfo<MapData>(callback, mapData));
+            heightMapThreadInfoQueue.Enqueue(new MapThreadInfo<HeightMap>(callback, heightMap));
         }
     }
 
     // This method starts other threads for MeshData type
-    public void RequestMeshData(MapData mapData, int levelOfDetail, Action<MeshData> callback)
+    public void RequestMeshData(HeightMap heightMap, int levelOfDetail, Action<MeshData> callback)
     {
-        ThreadStart threadStart = delegate { MeshDataThread(mapData, levelOfDetail, callback); };
+        ThreadStart threadStart = delegate { MeshDataThread(heightMap, levelOfDetail, callback); };
         new Thread(threadStart).Start();
     }
-    // This method will be run on different threads, it generates the terrain for each of the chunks for MapData type
-    void MeshDataThread(MapData mapData, int levelOfDetail, Action<MeshData> callback)
+    // This method will be run on different threads, it generates the terrain for each of the chunks for HeightMap type
+    void MeshDataThread(HeightMap heightMap, int levelOfDetail, Action<MeshData> callback)
     {
-        MeshData meshData = MeshGenerator.GenerateTerrainMesh(mapData.noiseMap, terrainData.meshHeightMultiplier, terrainData.meshHeightCurve, levelOfDetail, terrainData.usingFlatShading);
+        MeshData meshData = MeshGenerator.GenerateTerrainMesh(heightMap.noiseMap, meshSettings, editorLevelOfDetail);
 
         // Dont want the queue to be accessed at multiple times by mutliple threads so lock the queue until these lines have been run
         lock (meshDataThreadInfoQueue)
@@ -222,11 +119,11 @@ public class MapGenerator : MonoBehaviour
     private void Update()
     {
         // If the queue has any items in it
-        if (mapDataThreadInfoQueue.Count > 0)
+        if (heightMapThreadInfoQueue.Count > 0)
         { // Loop through all the items in the queue
-            for (int i = 0; i < mapDataThreadInfoQueue.Count; i++)
+            for (int i = 0; i < heightMapThreadInfoQueue.Count; i++)
             {
-                MapThreadInfo<MapData> threadInfo = mapDataThreadInfoQueue.Dequeue();
+                MapThreadInfo<HeightMap> threadInfo = heightMapThreadInfoQueue.Dequeue();
                 threadInfo.callback(threadInfo.parameter);
             }
         }
@@ -249,17 +146,17 @@ public class MapGenerator : MonoBehaviour
             editorLevelOfDetail = 0;
         }
 
-        if (terrainData != null)
+        if (meshSettings != null)
         {
             // Dont want to constantly add to it so if already added subtract first and then add again
-            terrainData.OnValuesUpdated -= OnValuesUpdated;
-            terrainData.OnValuesUpdated += OnValuesUpdated;
+            meshSettings.OnValuesUpdated -= OnValuesUpdated;
+            meshSettings.OnValuesUpdated += OnValuesUpdated;
         }
-        if (noiseData != null)
+        if (heightMapSettings != null)
         {
             // Dont want to constantly add to it so if already added subtract first and then add again
-            noiseData.OnValuesUpdated -= OnValuesUpdated;
-            noiseData.OnValuesUpdated += OnValuesUpdated;
+            heightMapSettings.OnValuesUpdated -= OnValuesUpdated;
+            heightMapSettings.OnValuesUpdated += OnValuesUpdated;
         }
         if (textureData != null)
         {
@@ -284,13 +181,3 @@ public class MapGenerator : MonoBehaviour
     }
 }
 
-public struct MapData
-{
-    // Once created we dont want to change the values of the variables
-    public readonly float[,] noiseMap;
-
-    public MapData(float[,] noiseMap)
-    {
-        this.noiseMap = noiseMap;
-    }
-}

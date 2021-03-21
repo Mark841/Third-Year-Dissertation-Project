@@ -19,7 +19,7 @@ public class InfiniteSystem : MonoBehaviour
     public static Vector2 viewerPos;
     Vector2 viewerPosOld;
     static MapGenerator mapGenerator;
-    int chunkSize;
+    float meshWorldSize;
     int chunkVisibleInViewDist;
 
     Dictionary<Vector2, TerrainChunk> terrainChunkDict = new Dictionary<Vector2, TerrainChunk>();
@@ -29,8 +29,8 @@ public class InfiniteSystem : MonoBehaviour
     {
         mapGenerator = FindObjectOfType<MapGenerator>();
         maxViewDist = detailLevels[detailLevels.Length - 1].viewerDistThreshold;
-        chunkSize = mapGenerator.CHUNK_SIZE - 1;
-        chunkVisibleInViewDist = Mathf.RoundToInt(maxViewDist / chunkSize);
+        meshWorldSize = mapGenerator.meshSettings.meshWorldSize;
+        chunkVisibleInViewDist = Mathf.RoundToInt(maxViewDist / meshWorldSize);
         // On start load update teh chunks as it won't go through the if statement in the Update method on the start of the run
         UpdateVisibleChunks();
     }
@@ -38,7 +38,7 @@ public class InfiniteSystem : MonoBehaviour
     // Method called on each frame
     private void Update()
     {
-        viewerPos = new Vector2(viewer.position.x, viewer.position.z) / mapGenerator.terrainData.infiniteTerrainScale;
+        viewerPos = new Vector2(viewer.position.x, viewer.position.z);
 
         // Call every frame so long as the viewer has moved
         if (viewerPos != viewerPosOld)
@@ -69,8 +69,8 @@ public class InfiniteSystem : MonoBehaviour
         }
 
         // Make an easy to read grid for the chunk coordinates so they go up in 1's not 240's (as thats the chunk size)
-        int currentChunkCoordX = Mathf.RoundToInt(viewerPos.x / chunkSize);
-        int currentChunkCoordY = Mathf.RoundToInt(viewerPos.y / chunkSize);
+        int currentChunkCoordX = Mathf.RoundToInt(viewerPos.x / meshWorldSize);
+        int currentChunkCoordY = Mathf.RoundToInt(viewerPos.y / meshWorldSize);
 
         // Loop through all the surrounding chunks of the viewer
         for (int xOffset = -chunkVisibleInViewDist; xOffset <= chunkVisibleInViewDist; xOffset++)
@@ -88,7 +88,7 @@ public class InfiniteSystem : MonoBehaviour
                     }
                     else
                     { // If the chunk doesn't exist yet add it to the dictionary
-                        terrainChunkDict.Add(viewedChunkCoord, new TerrainChunk(viewedChunkCoord, chunkSize, detailLevels, colliderLevelOfDetailIndex, transform, mapMaterial));
+                        terrainChunkDict.Add(viewedChunkCoord, new TerrainChunk(viewedChunkCoord, meshWorldSize, detailLevels, colliderLevelOfDetailIndex, transform, mapMaterial));
                     }
                 }
             }
@@ -101,7 +101,7 @@ public class InfiniteSystem : MonoBehaviour
         public Vector2 coord;
 
         GameObject meshObject;
-        Vector2 pos;
+        Vector2 sampleCentre;
         Bounds bounds;
 
         // MapData mapData;
@@ -114,21 +114,21 @@ public class InfiniteSystem : MonoBehaviour
         LODMesh[] lodMeshes;
         int colliderLevelOfDetailIndex;
 
-        MapData mapData;
+        HeightMap mapData;
         bool mapDataReceived;
 
         int prevLODIndex = -1;
         bool hasSetCollider;
 
-        public TerrainChunk(Vector2 coord, int size, levelOfDetailInfo[] detailLevels, int colliderLevelOfDetailIndex, Transform parent, Material mapMaterial)
+        public TerrainChunk(Vector2 coord, float meshWorldSize, levelOfDetailInfo[] detailLevels, int colliderLevelOfDetailIndex, Transform parent, Material mapMaterial)
         {
             this.coord = coord;
             this.detailLevels = detailLevels;
             this.colliderLevelOfDetailIndex = colliderLevelOfDetailIndex;
 
-            pos = coord * size;
-            bounds = new Bounds(pos, Vector2.one * size);
-            Vector3 posInWorld = new Vector3(pos.x, 0, pos.y);
+            sampleCentre = coord * meshWorldSize / mapGenerator.meshSettings.infiniteTerrainScale;
+            Vector2 pos = coord * meshWorldSize;
+            bounds = new Bounds(pos, Vector2.one * meshWorldSize);
 
             // Create a game object to put the mesh onto
             meshObject = new GameObject("Terrain Chunk");
@@ -137,11 +137,9 @@ public class InfiniteSystem : MonoBehaviour
             meshFilter = meshObject.AddComponent<MeshFilter>();
             meshCollider = meshObject.AddComponent<MeshCollider>();
             // Set the position of the chunk in the game world
-            meshObject.transform.position = posInWorld * mapGenerator.terrainData.infiniteTerrainScale;
+            meshObject.transform.position = new Vector3(pos.x, 0, pos.y);
             // Attach the chunk to the parent object (MapGenerator in Unity) so it doesnt fill up the heirarchy
             meshObject.transform.parent = parent;
-            // Set the scale of the chunk
-            meshObject.transform.localScale = Vector3.one * mapGenerator.terrainData.infiniteTerrainScale;
             // Make the chunk invisible
             SetVisible(false);
 
@@ -159,11 +157,11 @@ public class InfiniteSystem : MonoBehaviour
                 }
             }
 
-            mapGenerator.RequestMapData(pos, OnMapDataReceived);
+            mapGenerator.RequestHeightMap(sampleCentre, OnMapDataReceived);
         }
 
         // Cant get mesh data directly and avoid this method, as by doing it this way we can only affect the level of detail of a chunk when its needed to be and not every time the viewer moves
-        void OnMapDataReceived(MapData mapData)
+        void OnMapDataReceived(HeightMap mapData)
         {
             this.mapData = mapData;
             mapDataReceived = true;
@@ -296,7 +294,7 @@ public class InfiniteSystem : MonoBehaviour
             updateCallback();
         }
 
-        public void RequestMesh(MapData mapData)
+        public void RequestMesh(HeightMap mapData)
         {
             hasRequestedMesh = true;
             mapGenerator.RequestMeshData(mapData, levelOfDetail, OnMeshDataReceived);
@@ -306,7 +304,7 @@ public class InfiniteSystem : MonoBehaviour
     [System.Serializable]
     public struct levelOfDetailInfo
     {
-        [Range(0, MeshGenerator.numOfSupportedLevelsOfDetail - 1)]
+        [Range(0, MeshSettings.numOfSupportedLevelsOfDetail - 1)]
         public int levelOfDetail;
         // If the viewer is outside of this threshold decrease the level of detail
         public float viewerDistThreshold;
